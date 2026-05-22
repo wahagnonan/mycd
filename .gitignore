@@ -1,0 +1,13 @@
+env/
+db.sqlite3
+**/__pycache__/
+*.pyc
+*.pyo
+node_modules/
+.next/
+*.egg-info/
+dist/
+.DS_Store
+Thumbs.db
+_bmad-output/
+.opencode/
