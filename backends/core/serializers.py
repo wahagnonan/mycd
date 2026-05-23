@@ -148,7 +148,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
     dernier_message = serializers.SerializerMethodField()
     nb_non_lus = serializers.SerializerMethodField()
     correspondant_nom = serializers.SerializerMethodField()
-    correspondant_email = serializers.EmailField()
+    correspondant_email = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
