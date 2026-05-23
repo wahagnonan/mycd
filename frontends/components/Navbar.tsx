@@ -17,9 +17,12 @@ export default function Navbar() {
 
         <nav className="hidden items-center gap-6 text-sm font-medium text-zinc-600 sm:flex">
           <Link href="/" className="hover:text-zinc-900">Accueil</Link>
-          <a href="#how-it-works" className="hover:text-zinc-900">Comment ça marche</a>
+          <Link href="/encadreurs" className="hover:text-zinc-900">Encadreurs</Link>
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
+              {user?.role === "encadreur" && (
+                <Link href="/mon-profil" className="hover:text-zinc-900">Mon profil</Link>
+              )}
               <span className="text-zinc-900">{user?.email}</span>
               <button
                 onClick={logout}
@@ -65,9 +68,12 @@ export default function Navbar() {
         <div className="border-t border-zinc-200 bg-white px-4 pb-4 pt-2 sm:hidden">
           <nav className="flex flex-col gap-3 text-sm font-medium text-zinc-600">
             <Link href="/" onClick={() => setMenuOpen(false)}>Accueil</Link>
-            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>Comment ça marche</a>
+            <Link href="/encadreurs" onClick={() => setMenuOpen(false)}>Encadreurs</Link>
             {isAuthenticated ? (
               <>
+                {user?.role === "encadreur" && (
+                  <Link href="/mon-profil" onClick={() => setMenuOpen(false)}>Mon profil</Link>
+                )}
                 <span className="text-zinc-900">{user?.email}</span>
                 <button onClick={() => { logout(); setMenuOpen(false); }}
                   className="rounded-lg bg-zinc-900 px-3 py-1.5 text-white text-center">

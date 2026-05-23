@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User
+from .models import Matiere, ProfilEncadreur, User
 
 
 @admin.register(User)
@@ -21,3 +21,16 @@ class CustomUserAdmin(UserAdmin):
     )
     search_fields = ("email", "phone")
     ordering = ("email",)
+
+
+@admin.register(Matiere)
+class MatiereAdmin(admin.ModelAdmin):
+    list_display = ("nom",)
+    search_fields = ("nom",)
+
+
+@admin.register(ProfilEncadreur)
+class ProfilEncadreurAdmin(admin.ModelAdmin):
+    list_display = ("user", "note_moyenne", "verified", "disponible")
+    list_filter = ("verified", "disponible", "matieres")
+    search_fields = ("user__email",)

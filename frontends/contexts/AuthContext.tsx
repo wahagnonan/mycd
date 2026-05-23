@@ -17,6 +17,8 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /** Redirige vers / si déjà connecté (pour login/register) */
+  redirectIfAuthenticated: () => void;
   register: (data: {
     email: string;
     phone: string;
@@ -56,19 +58,28 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
+  const getHomeRoute = (role: string) =>
+    role === "encadreur" ? "/mon-profil" : "/encadreurs";
+
+  const redirectIfAuthenticated = () => {
+    if (!isLoading && user) {
+      router.push(getHomeRoute(user.role));
+    }
+  };
+
   const handleRegister = async (data: {
     email: string; phone: string; password: string; password2: string;
     role: string; ville?: string; quartier?: string;
   }) => {
     const u = await apiRegister(data);
     setUser(u);
-    router.push("/");
+    router.push(getHomeRoute(u.role));
   };
 
   const handleLogin = async (email: string, password: string) => {
     const u = await apiLogin(email, password);
     setUser(u);
-    router.push("/");
+    router.push(getHomeRoute(u.role));
   };
 
   const handleLogout = () => {
@@ -81,6 +92,7 @@ function AuthProviderInner({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user, isLoading, isAuthenticated: !!user,
+        redirectIfAuthenticated,
         register: handleRegister, login: handleLogin, logout: handleLogout,
       }}
     >
