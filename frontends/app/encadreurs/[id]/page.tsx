@@ -2,8 +2,10 @@
 
 import { use } from "react";
 import { useEffect, useState } from "react";
-import { getEncadreur, ProfilEncadreur } from "@/lib/api";
+import { createConversation, getEncadreur, ProfilEncadreur } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("fr-FR", {
@@ -26,9 +28,12 @@ export default function EncadreurDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const router = useRouter();
+  const { isAuthenticated, user } = useAuth();
   const [profil, setProfil] = useState<ProfilEncadreur | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [contactLoading, setContactLoading] = useState(false);
 
   useEffect(() => {
     getEncadreur(Number(id))
@@ -158,12 +163,23 @@ export default function EncadreurDetailPage({
                 {profil.disponible ? "Disponible" : "Non disponible"}
               </span>
             </div>
-            <a
-              href={`mailto:${profil.email}?subject=Contact%20depuis%20MYCD%20-%20${encodeURIComponent(profil.nom)}`}
-              className="bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600 transition font-medium text-sm"
+            <button
+              onClick={async () => {
+                if (!isAuthenticated) { router.push("/login"); return; }
+                if (user?.role !== "parent") return;
+                setContactLoading(true);
+                try {
+                  const conv = await createConversation(profil.id);
+                  router.push(`/messagerie/${conv.id}`);
+                } catch {
+                  setContactLoading(false);
+                }
+              }}
+              disabled={contactLoading || (isAuthenticated && user?.role !== "parent")}
+              className="bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600 transition font-medium text-sm disabled:opacity-50"
             >
-              Contacter
-            </a>
+              {contactLoading ? "..." : isAuthenticated && user?.role !== "parent" ? "Messagerie" : "Contacter"}
+            </button>
           </div>
         </div>
       </div>

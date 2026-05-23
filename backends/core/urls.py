@@ -1,9 +1,13 @@
 from django.urls import path
 
 from .views import (
+    ConversationListView,
+    ConversationMessageListView,
+    CreateConversationView,
     EncadreurDetailView,
     EncadreurListView,
     LoginView,
+    MarkAsReadView,
     MatiereListView,
     MeView,
     MonProfilView,
@@ -22,4 +26,9 @@ urlpatterns = [
     path("encadreurs/<int:pk>/", EncadreurDetailView.as_view(), name="encadreur-detail"),
     path("mon-profil/", MonProfilView.as_view(), name="mon-profil"),
     path("matieres/", MatiereListView.as_view(), name="matiere-list"),
+    # Messagerie
+    path("messagerie/conversations/", ConversationListView.as_view(), name="conversation-list"),
+    path("messagerie/conversations/create/", CreateConversationView.as_view(), name="conversation-create"),
+    path("messagerie/conversations/<int:pk>/", ConversationMessageListView.as_view(), name="conversation-detail"),
+    path("messagerie/conversations/<int:pk>/read/", MarkAsReadView.as_view(), name="conversation-read"),
 ]

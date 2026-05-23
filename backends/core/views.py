@@ -3,6 +3,7 @@ import logging
 from django.db import models
 from django.contrib.auth import authenticate
 from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -10,10 +11,13 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
-from .models import ProfilEncadreur, User, Matiere
+from .models import Conversation, Matiere, Message, ProfilEncadreur, User
 from .serializers import (
+    ConversationListSerializer,
+    CreateConversationSerializer,
     LoginSerializer,
     MatiereSerializer,
+    MessageSerializer,
     ProfilEncadreurSerializer,
     RegisterSerializer,
     UserSerializer,
@@ -299,3 +303,68 @@ class MatiereListView(generics.ListAPIView):
     serializer_class = MatiereSerializer
     permission_classes = (permissions.AllowAny,)
     pagination_class = None
+
+
+# ─── Messagerie ─────────────────────────────────────────────
+
+class ConversationListView(generics.ListAPIView):
+    serializer_class = ConversationListSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        user = self.request.user
+        return Conversation.objects.filter(
+            models.Q(parent=user) | models.Q(encadreur=user)
+        ).select_related("parent", "encadreur")
+
+
+class CreateConversationView(generics.CreateAPIView):
+    serializer_class = CreateConversationSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        encadreur = User.objects.get(id=serializer.validated_data["encadreur_id"])
+        conversation, created = Conversation.objects.get_or_create(
+            parent=request.user,
+            encadreur=encadreur,
+        )
+        if created:
+            logger.info(
+                "CONVERSATION_CREATED | Parent=%s (id=%d) | Encadreur=%s (id=%d)",
+                request.user.email, request.user.id,
+                encadreur.email, encadreur.id,
+            )
+        return Response({"id": conversation.id, "created": created})
+
+
+class ConversationMessageListView(generics.ListCreateAPIView):
+    serializer_class = MessageSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return Message.objects.filter(conversation_id=self.kwargs["pk"]).select_related("sender")
+
+    def perform_create(self, serializer):
+        conversation = Conversation.objects.get(id=self.kwargs["pk"])
+        user = self.request.user
+        if user not in (conversation.parent, conversation.encadreur):
+            raise PermissionDenied("Vous ne participez pas à cette conversation")
+        serializer.save(conversation=conversation, sender=user)
+        logger.info(
+            "MESSAGE_SENT | Conversation=%d | Sender=%s (id=%d)",
+            conversation.id, user.email, user.id,
+        )
+
+
+class MarkAsReadView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        conversation = Conversation.objects.get(id=pk)
+        user = request.user
+        if user not in (conversation.parent, conversation.encadreur):
+            raise PermissionDenied("Vous ne participez pas à cette conversation")
+        updated = conversation.messages.filter(is_read=False).exclude(sender=user).update(is_read=True)
+        return Response({"marques_lus": updated})

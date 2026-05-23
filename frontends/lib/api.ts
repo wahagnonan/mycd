@@ -286,3 +286,52 @@ export function logout(): boolean {
   clearTokens();
   return true;
 }
+
+// ─── Messagerie ───────────────────────────────────────────
+
+export interface Conversation {
+  id: number;
+  correspondant_nom: string;
+  correspondant_email: string;
+  dernier_message: { content: string; created_at: string; est_moi: boolean } | null;
+  nb_non_lus: number;
+  updated_at: string;
+}
+
+export interface Message {
+  id: number;
+  sender: number;
+  sender_email: string;
+  sender_nom: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+export async function getConversations(): Promise<Conversation[]> {
+  return apiFetch<Conversation[]>("/messagerie/conversations/");
+}
+
+export async function createConversation(encadreurId: number): Promise<{ id: number; created: boolean }> {
+  return apiFetch<{ id: number; created: boolean }>("/messagerie/conversations/create/", {
+    method: "POST",
+    body: JSON.stringify({ encadreur_id: encadreurId }),
+  });
+}
+
+export async function getMessages(conversationId: number): Promise<Message[]> {
+  return apiFetch<Message[]>(`/messagerie/conversations/${conversationId}/`);
+}
+
+export async function sendMessage(conversationId: number, content: string): Promise<Message> {
+  return apiFetch<Message>(`/messagerie/conversations/${conversationId}/`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function markAsRead(conversationId: number): Promise<{ marques_lus: number }> {
+  return apiFetch<{ marques_lus: number }>(`/messagerie/conversations/${conversationId}/read/`, {
+    method: "POST",
+  });
+}
