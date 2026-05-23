@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -9,7 +9,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isLoading, isAuthenticated, redirectIfAuthenticated } = useAuth();
+
+  // Rediriger vers / si déjà connecté
+  useEffect(() => {
+    redirectIfAuthenticated();
+  }, [redirectIfAuthenticated]);
+
+  // Ne pas afficher le formulaire pendant le chargement ou si déjà connecté
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-zinc-900"></div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return null; // la redirection est en cours
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

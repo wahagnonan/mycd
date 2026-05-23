@@ -2,6 +2,27 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Décode un JWT sans vérifier la signature (uniquement pour lire l'expiration).
+ * Retourne `null` si le token est mal formé.
+ */
+function decodeTokenPayload(token: string): Record<string, unknown> | null {
+  try {
+    const base64 = token.split(".")[1];
+    if (!base64) return null;
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
+
+/** Vérifie si un token JWT est expiré (basé sur la date dans le payload). */
+function isTokenExpired(token: string): boolean {
+  const payload = decodeTokenPayload(token);
+  if (!payload || typeof payload.exp !== "number") return true;
+  return Date.now() >= payload.exp * 1000;
+}
+
 function getTokens() {
   if (typeof window === "undefined") return null;
   const access = localStorage.getItem("access_token");
@@ -21,24 +42,35 @@ function clearTokens() {
 }
 
 async function refreshAccessToken(refresh: string): Promise<string | null> {
+  // Éviter les appels concurrents au refresh
   if (refreshPromise) return refreshPromise;
 
-  refreshPromise = fetch(`${API_URL}/auth/refresh/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh }),
-  })
-    .then(async (res) => {
-      if (!res.ok) return null;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/refresh/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh }),
+      });
+
+      if (!res.ok) {
+        // 401 sur refresh = refresh token invalide ou blacklisté
+        clearTokens();
+        return null;
+      }
+
       const data = await res.json();
       setTokens(data.access, refresh);
       return data.access;
-    })
-    .finally(() => {
-      refreshPromise = null;
-    });
+    } catch {
+      // Erreur réseau — ne pas clear les tokens, on réessaiera
+      return null;
+    }
+  })();
 
-  return refreshPromise;
+  const result = await refreshPromise;
+  refreshPromise = null;
+  return result;
 }
 
 export async function apiFetch<T>(
@@ -50,26 +82,49 @@ export async function apiFetch<T>(
     "Content-Type": "application/json",
     ...options.headers,
   };
-  if (tokens) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${tokens.access}`;
-  }
 
-  let res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
-
-  if (res.status === 401 && tokens?.refresh) {
+  // Si le token access est déjà expiré, tenter un refresh avant l'appel
+  if (tokens?.access && tokens.refresh && isTokenExpired(tokens.access)) {
     const newAccess = await refreshAccessToken(tokens.refresh);
     if (newAccess) {
+      tokens.access = newAccess;
       (headers as Record<string, string>)["Authorization"] = `Bearer ${newAccess}`;
-      res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
     } else {
       clearTokens();
       throw new AuthError("Session expirée", true);
+    }
+  } else if (tokens) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${tokens.access}`;
+  }
+
+  let res = await fetch(`${API_URL}${endpoint}`, { ...options, headers }).catch(() => {
+    throw new Error("Erreur réseau — vérifiez votre connexion");
+  });
+
+  // Tentative de refresh automatique en cas de 401
+  if (res.status === 401 && tokens?.refresh && !refreshPromise) {
+    const newAccess = await refreshAccessToken(tokens.refresh);
+    if (newAccess) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${newAccess}`;
+      res = await fetch(`${API_URL}${endpoint}`, { ...options, headers }).catch(() => {
+        throw new Error("Erreur réseau — vérifiez votre connexion");
+      });
+    } else {
+      clearTokens();
+      throw new AuthError("Session expirée — veuillez vous reconnecter", true);
     }
   }
 
   if (!res.ok) {
     if (res.status === 401) {
-      throw new AuthError("Non authentifié", false);
+      clearTokens();
+      throw new AuthError("Non authentifié", true);
+    }
+    if (res.status === 403) {
+      throw new AuthError("Accès refusé", false);
+    }
+    if (res.status === 429) {
+      throw new Error("Trop de requêtes — veuillez réessayer plus tard");
     }
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || err.email?.[0] || err.phone?.[0] || "Erreur serveur");
@@ -103,7 +158,14 @@ export async function register(data: {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(
-      err.email?.[0] || err.phone?.[0] || err.detail || "Erreur lors de l'inscription",
+      err.email?.[0]
+        || err.phone?.[0]
+        || err.password?.[0]
+        || err.password2?.[0]
+        || err.role?.[0]
+        || err.non_field_errors?.[0]
+        || err.detail
+        || "Erreur lors de l'inscription",
     );
   }
   const json = await res.json();
@@ -135,6 +197,77 @@ export async function getMe() {
     ville: string;
     quartier: string;
   }>("/auth/me/");
+}
+
+export interface ProfilEncadreur {
+  id: number;
+  email: string;
+  phone: string;
+  nom: string;
+  bio: string;
+  ville: string;
+  quartier: string;
+  matieres: { id: number; nom: string }[];
+  tarif_mois: number | null;
+  tarif_horaire: number | null;
+  type_tarif: string;
+  disponible: boolean;
+  verified: boolean;
+  note_moyenne: number;
+  date_inscription: string;
+
+  // Questionnaire post-inscription
+  accepte_deplacement: boolean;
+  niveau_etudes: string;
+  niveaux_enseignement: string[];
+  experience_cours: string;
+  jours_disponibles: string[];
+  creneaux_preferes: string[];
+  cgu_acceptees: boolean;
+  questionnaire_rempli: boolean;
+}
+
+export interface Matiere {
+  id: number;
+  nom: string;
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export async function getEncadreurs(params?: {
+  ville?: string; quartier?: string; matiere?: string; page?: number;
+}): Promise<PaginatedResponse<ProfilEncadreur>> {
+  const qParams: Record<string, string> = {};
+  if (params?.ville) qParams.ville = params.ville;
+  if (params?.quartier) qParams.quartier = params.quartier;
+  if (params?.matiere) qParams.matiere = params.matiere;
+  if (params?.page) qParams.page = String(params.page);
+  const qs = new URLSearchParams(qParams).toString();
+  return apiFetch<PaginatedResponse<ProfilEncadreur>>(`/encadreurs/${qs ? `?${qs}` : ""}`);
+}
+
+export async function getEncadreur(id: number): Promise<ProfilEncadreur> {
+  return apiFetch<ProfilEncadreur>(`/encadreurs/${id}/`);
+}
+
+export async function getMonProfil(): Promise<ProfilEncadreur> {
+  return apiFetch<ProfilEncadreur>("/mon-profil/");
+}
+
+export async function updateMonProfil(data: Partial<ProfilEncadreur>): Promise<ProfilEncadreur> {
+  return apiFetch<ProfilEncadreur>("/mon-profil/", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getMatieres(): Promise<Matiere[]> {
+  return apiFetch<Matiere[]>("/matieres/");
 }
 
 export function logout(): boolean {
