@@ -78,19 +78,6 @@ export default function ConversationPage({
     }
   };
 
-  const retrySend = async (content: string) => {
-    setSending(true);
-    try {
-      await sendMessage(Number(id), content);
-      const data = await getMessages(Number(id));
-      setMessages(data);
-    } catch {
-      // keep error state
-    } finally {
-      setSending(false);
-    }
-  };
-
   if (isLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -134,27 +121,30 @@ export default function ConversationPage({
                 <p>{m.content}</p>
                 <div className={`flex items-center gap-1 mt-1 ${m.sender === user?.id ? "text-orange-100" : "text-gray-400"}`}>
                   <span className="text-xs">
-                    {m.statut === "envoi"
-                      ? "Envoi..."
-                      : m.statut === "erreur"
-                        ? "Échec"
-                        : new Date(m.created_at).toLocaleTimeString("fr-FR", {
-                            hour: "2-digit", minute: "2-digit",
-                          })
-                    }
+                    {new Date(m.created_at).toLocaleTimeString("fr-FR", {
+                      hour: "2-digit", minute: "2-digit",
+                    })}
                   </span>
-                  {m.statut === "envoye" && (
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                  {m.sender === user?.id && m.statut !== "erreur" && (
+                    m.statut === "envoi" ? (
+                      <svg className="w-3.5 h-3.5 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                      </svg>
+                    ) : m.is_read ? (
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M18 4l-8 8-3-3" stroke="currentColor" strokeWidth="2" fill="none" />
+                        <path d="M14 4l-8 8-3-3" stroke="currentColor" strokeWidth="2" fill="none" transform="translate(2, 0)" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )
                   )}
                   {m.statut === "erreur" && (
-                    <button
-                      onClick={() => retrySend(m.content)}
-                      className="text-xs underline hover:no-underline"
-                    >
-                      Réessayer
-                    </button>
+                    <svg className="w-3 h-3 text-red-300" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 18a8 8 0 100-16 8 8 0 000-16zM11 5a1 1 0 10-2 0v6a1 1 0 102 0V5zm-1 9a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" fillRule="evenodd" />
+                    </svg>
                   )}
                 </div>
               </div>
