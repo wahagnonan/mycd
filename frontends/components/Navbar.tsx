@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -24,6 +25,7 @@ export default function Navbar() {
               {user?.role === "encadreur" && (
                 <Link href="/mon-profil" className="hover:text-zinc-900">Mon profil</Link>
               )}
+              <NotificationBell />
               <span className="text-zinc-900">{user?.email}</span>
               <button
                 onClick={logout}

@@ -7,10 +7,13 @@ from .views import (
     EncadreurDetailView,
     EncadreurListView,
     LoginView,
+    MarkAllNotificationsReadView,
     MarkAsReadView,
+    MarkNotificationReadView,
     MatiereListView,
     MeView,
     MonProfilView,
+    NotificationListView,
     RegisterView,
     TokenRefreshView,
     api_root,
@@ -31,4 +34,8 @@ urlpatterns = [
     path("messagerie/conversations/create/", CreateConversationView.as_view(), name="conversation-create"),
     path("messagerie/conversations/<int:pk>/", ConversationMessageListView.as_view(), name="conversation-detail"),
     path("messagerie/conversations/<int:pk>/read/", MarkAsReadView.as_view(), name="conversation-read"),
+    # Notifications
+    path("notifications/", NotificationListView.as_view(), name="notification-list"),
+    path("notifications/<int:pk>/read/", MarkNotificationReadView.as_view(), name="notification-read"),
+    path("notifications/read-all/", MarkAllNotificationsReadView.as_view(), name="notification-read-all"),
 ]

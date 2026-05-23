@@ -11,13 +11,14 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
-from .models import Conversation, Matiere, Message, ProfilEncadreur, User
+from .models import Conversation, Matiere, Message, Notification, ProfilEncadreur, User
 from .serializers import (
     ConversationListSerializer,
     CreateConversationSerializer,
     LoginSerializer,
     MatiereSerializer,
     MessageSerializer,
+    NotificationSerializer,
     ProfilEncadreurSerializer,
     RegisterSerializer,
     UserSerializer,
@@ -357,7 +358,15 @@ class ConversationMessageListView(generics.ListCreateAPIView):
         user = self.request.user
         if user not in (conversation.parent, conversation.encadreur):
             raise PermissionDenied("Vous ne participez pas à cette conversation")
-        serializer.save(conversation=conversation, sender=user)
+        msg = serializer.save(conversation=conversation, sender=user)
+        destinataire = conversation.encadreur if user == conversation.parent else conversation.parent
+        Notification.objects.create(
+            user=destinataire,
+            type=Notification.Type.NEW_MESSAGE,
+            title=f"Nouveau message de {user.first_name or user.email}",
+            message=msg.content[:100],
+            link=f"/messagerie/{conversation.id}",
+        )
         logger.info(
             "MESSAGE_SENT | Conversation=%d | Sender=%s (id=%d)",
             conversation.id, user.email, user.id,
@@ -373,4 +382,33 @@ class MarkAsReadView(APIView):
         if user not in (conversation.parent, conversation.encadreur):
             raise PermissionDenied("Vous ne participez pas à cette conversation")
         updated = conversation.messages.filter(is_read=False).exclude(sender=user).update(is_read=True)
+        return Response({"marques_lus": updated})
+
+
+# ─── Notifications ─────────────────────────────────────────
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = None
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, pk):
+        notification = Notification.objects.get(id=pk, user=request.user)
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+        return Response({"ok": True})
+
+
+class MarkAllNotificationsReadView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        updated = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response({"marques_lus": updated})

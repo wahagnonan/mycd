@@ -1,7 +1,7 @@
 from django.db import IntegrityError
 from rest_framework import serializers
 
-from .models import Conversation, Matiere, Message, ProfilEncadreur, User
+from .models import Conversation, Matiere, Message, Notification, ProfilEncadreur, User
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -198,3 +198,10 @@ class CreateConversationSerializer(serializers.Serializer):
         if encadreur == user:
             raise serializers.ValidationError("Vous ne pouvez pas vous contacter vous-même")
         return value
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ("id", "type", "title", "message", "link", "is_read", "created_at")
+        read_only_fields = ("id", "type", "title", "message", "link", "created_at")

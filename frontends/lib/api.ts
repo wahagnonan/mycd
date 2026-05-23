@@ -336,3 +336,27 @@ export async function markAsRead(conversationId: number): Promise<{ marques_lus:
     method: "POST",
   });
 }
+
+// ─── Notifications ─────────────────────────────────────────
+
+export interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  message: string;
+  link: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export async function getNotifications(): Promise<Notification[]> {
+  return apiFetch<Notification[]>("/notifications/");
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  await apiFetch(`/notifications/${id}/read/`, { method: "POST" });
+}
+
+export async function markAllNotificationsRead(): Promise<{ marques_lus: number }> {
+  return apiFetch<{ marques_lus: number }>("/notifications/read-all/", { method: "POST" });
+}
