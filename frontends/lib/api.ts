@@ -240,15 +240,27 @@ export interface PaginatedResponse<T> {
 }
 
 export async function getEncadreurs(params?: {
-  ville?: string; quartier?: string; matiere?: string; page?: number;
+  ville?: string; quartier?: string; matiere?: string;
+  page?: number; search?: string; note_min?: number;
+  niveau_etudes?: string; niveaux_enseignement?: string[];
+  jours_disponibles?: string[]; tarif_max_mois?: number;
+  tarif_max_horaire?: number; ordering?: string;
 }): Promise<PaginatedResponse<ProfilEncadreur>> {
-  const qParams: Record<string, string> = {};
-  if (params?.ville) qParams.ville = params.ville;
-  if (params?.quartier) qParams.quartier = params.quartier;
-  if (params?.matiere) qParams.matiere = params.matiere;
-  if (params?.page) qParams.page = String(params.page);
-  const qs = new URLSearchParams(qParams).toString();
-  return apiFetch<PaginatedResponse<ProfilEncadreur>>(`/encadreurs/${qs ? `?${qs}` : ""}`);
+  const qs = new URLSearchParams();
+  if (params?.ville) qs.set("ville", params.ville);
+  if (params?.quartier) qs.set("quartier", params.quartier);
+  if (params?.matiere) qs.set("matiere", params.matiere);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.search) qs.set("search", params.search);
+  if (params?.note_min) qs.set("note_min", String(params.note_min));
+  if (params?.niveau_etudes) qs.set("niveau_etudes", params.niveau_etudes);
+  if (params?.ordering) qs.set("ordering", params.ordering);
+  params?.niveaux_enseignement?.forEach((n) => qs.append("niveaux_enseignement", n));
+  params?.jours_disponibles?.forEach((j) => qs.append("jours_disponibles", j));
+  if (params?.tarif_max_mois) qs.set("tarif_max_mois", String(params.tarif_max_mois));
+  if (params?.tarif_max_horaire) qs.set("tarif_max_horaire", String(params.tarif_max_horaire));
+  const qstr = qs.toString();
+  return apiFetch<PaginatedResponse<ProfilEncadreur>>(`/encadreurs/${qstr ? `?${qstr}` : ""}`);
 }
 
 export async function getEncadreur(id: number): Promise<ProfilEncadreur> {

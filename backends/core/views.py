@@ -1,5 +1,6 @@
 import logging
 
+from django.db import models
 from django.contrib.auth import authenticate
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
@@ -162,23 +163,92 @@ class MeView(generics.RetrieveAPIView):
 class EncadreurListView(generics.ListAPIView):
     """
     Liste publique des encadreurs avec pagination (20/page)
-    et filtres par ville, quartier, matière.
+    et filtres avancés : ville, quartier, matière, recherche texte,
+    note minimum, niveau d'études, niveaux d'enseignement,
+    tarif max, jours disponibles, tri.
     """
-    queryset = ProfilEncadreur.objects.filter(disponible=True).select_related("user").order_by("-date_inscription")
     serializer_class = ProfilEncadreurSerializer
     permission_classes = (permissions.AllowAny,)
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = ProfilEncadreur.objects.filter(disponible=True).select_related("user")
+
+        # Recherche texte
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                models.Q(user__first_name__icontains=search)
+                | models.Q(user__last_name__icontains=search)
+                | models.Q(bio__icontains=search)
+            )
+
+        # Ville / quartier
         ville = self.request.query_params.get("ville")
-        quartier = self.request.query_params.get("quartier")
-        matiere = self.request.query_params.get("matiere")
         if ville:
             qs = qs.filter(user__ville__icontains=ville)
+        quartier = self.request.query_params.get("quartier")
         if quartier:
             qs = qs.filter(user__quartier__icontains=quartier)
+
+        # Matière
+        matiere = self.request.query_params.get("matiere")
         if matiere:
             qs = qs.filter(matieres__id=matiere)
+
+        # Note minimum
+        note_min = self.request.query_params.get("note_min")
+        if note_min:
+            try:
+                qs = qs.filter(note_moyenne__gte=float(note_min))
+            except ValueError:
+                pass
+
+        # Niveau d'études
+        niveau_etudes = self.request.query_params.get("niveau_etudes")
+        if niveau_etudes:
+            qs = qs.filter(niveau_etudes=niveau_etudes)
+
+        # Niveaux d'enseignement (JSONField — un ou plusieurs)
+        niveaux_ens = self.request.query_params.getlist("niveaux_enseignement")
+        for niv in niveaux_ens:
+            qs = qs.filter(niveaux_enseignement__contains=niv)
+
+        # Jours disponibles (JSONField)
+        jours = self.request.query_params.getlist("jours_disponibles")
+        for jour in jours:
+            qs = qs.filter(jours_disponibles__contains=jour)
+
+        # Tarif max mensuel
+        tarif_max_mois = self.request.query_params.get("tarif_max_mois")
+        if tarif_max_mois:
+            try:
+                qs = qs.filter(
+                    models.Q(tarif_mois__lte=int(tarif_max_mois))
+                    | models.Q(tarif_mois__isnull=True)
+                )
+            except ValueError:
+                pass
+
+        # Tarif max horaire
+        tarif_max_horaire = self.request.query_params.get("tarif_max_horaire")
+        if tarif_max_horaire:
+            try:
+                qs = qs.filter(
+                    models.Q(tarif_horaire__lte=int(tarif_max_horaire))
+                    | models.Q(tarif_horaire__isnull=True)
+                )
+            except ValueError:
+                pass
+
+        # Tri
+        ordering = self.request.query_params.get("ordering")
+        if ordering in ("note", "-note", "tarif_mois", "-tarif_mois",
+                         "tarif_horaire", "-tarif_horaire",
+                         "date_inscription", "-date_inscription"):
+            qs = qs.order_by(ordering)
+        else:
+            qs = qs.order_by("-date_inscription")
+
         return qs
 
 
