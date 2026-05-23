@@ -6,6 +6,8 @@ import Link from "next/link";
 import { getMessages, sendMessage, markAsRead, Message } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
+type MessageAvecStatut = Message & { statut?: "envoye" | "envoi" | "erreur" };
+
 export default function ConversationPage({
   params,
 }: {
@@ -14,7 +16,7 @@ export default function ConversationPage({
   const { id } = use(params);
   const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageAvecStatut[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -48,14 +50,42 @@ export default function ConversationPage({
 
   const handleSend = async () => {
     if (!input.trim() || sending) return;
+    const content = input.trim();
+    setInput("");
     setSending(true);
+
+    const tempId = -Date.now();
+    const tempMsg: MessageAvecStatut = {
+      id: tempId, sender: user!.id, sender_email: user!.email,
+      sender_nom: user!.email, content, created_at: new Date().toISOString(),
+      is_read: false, statut: "envoi",
+    };
+
+    setMessages((prev) => [...prev, tempMsg]);
+
     try {
-      await sendMessage(Number(id), input.trim());
-      setInput("");
+      await sendMessage(Number(id), content);
       const data = await getMessages(Number(id));
       setMessages(data);
     } catch {
-      // ignore
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...m, statut: "erreur" as const } : m
+        )
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const retrySend = async (content: string) => {
+    setSending(true);
+    try {
+      await sendMessage(Number(id), content);
+      const data = await getMessages(Number(id));
+      setMessages(data);
+    } catch {
+      // keep error state
     } finally {
       setSending(false);
     }
@@ -99,14 +129,34 @@ export default function ConversationPage({
                   m.sender === user?.id
                     ? "bg-orange-500 text-white rounded-br-sm"
                     : "bg-white border border-gray-200 rounded-bl-sm"
-                }`}
+                } ${m.statut === "envoi" ? "opacity-60" : ""}`}
               >
                 <p>{m.content}</p>
-                <p className={`text-xs mt-1 ${m.sender === user?.id ? "text-orange-100" : "text-gray-400"}`}>
-                  {new Date(m.created_at).toLocaleTimeString("fr-FR", {
-                    hour: "2-digit", minute: "2-digit",
-                  })}
-                </p>
+                <div className={`flex items-center gap-1 mt-1 ${m.sender === user?.id ? "text-orange-100" : "text-gray-400"}`}>
+                  <span className="text-xs">
+                    {m.statut === "envoi"
+                      ? "Envoi..."
+                      : m.statut === "erreur"
+                        ? "Échec"
+                        : new Date(m.created_at).toLocaleTimeString("fr-FR", {
+                            hour: "2-digit", minute: "2-digit",
+                          })
+                    }
+                  </span>
+                  {m.statut === "envoye" && (
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  {m.statut === "erreur" && (
+                    <button
+                      onClick={() => retrySend(m.content)}
+                      className="text-xs underline hover:no-underline"
+                    >
+                      Réessayer
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
