@@ -344,7 +344,11 @@ class ConversationMessageListView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_queryset(self):
-        return Message.objects.filter(conversation_id=self.kwargs["pk"]).select_related("sender")
+        conv = Conversation.objects.get(id=self.kwargs["pk"])
+        user = self.request.user
+        if user not in (conv.parent, conv.encadreur):
+            return Message.objects.none()
+        return Message.objects.filter(conversation=conv).select_related("sender")
 
     def perform_create(self, serializer):
         conversation = Conversation.objects.get(id=self.kwargs["pk"])

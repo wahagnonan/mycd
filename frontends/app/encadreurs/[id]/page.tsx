@@ -169,7 +169,7 @@ export default function EncadreurDetailPage({
                 if (user?.role !== "parent") return;
                 setContactLoading(true);
                 try {
-                  const conv = await createConversation(profil.id);
+                  const conv = await createConversation(profil.user_id);
                   router.push(`/messagerie/${conv.id}`);
                 } catch {
                   setContactLoading(false);

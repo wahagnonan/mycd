@@ -201,6 +201,7 @@ export async function getMe() {
 
 export interface ProfilEncadreur {
   id: number;
+  user_id: number;
   email: string;
   phone: string;
   nom: string;
