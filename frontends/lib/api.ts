@@ -215,6 +215,7 @@ export interface ProfilEncadreur {
   disponible: boolean;
   verified: boolean;
   note_moyenne: number;
+  nombre_avis: number;
   date_inscription: string;
 
   // Questionnaire post-inscription
@@ -359,4 +360,38 @@ export async function markNotificationRead(id: number): Promise<void> {
 
 export async function markAllNotificationsRead(): Promise<{ marques_lus: number }> {
   return apiFetch<{ marques_lus: number }>("/notifications/read-all/", { method: "POST" });
+}
+
+// ─── Avis ───────────────────────────────────────────────────
+
+export interface Avis {
+  id: number;
+  parent: number;
+  parent_nom: string;
+  parent_email: string;
+  note: number;
+  commentaire: string;
+  created_at: string;
+}
+
+export async function getAvis(encadreurId: number): Promise<Avis[]> {
+  return apiFetch<Avis[]>(`/encadreurs/${encadreurId}/avis/liste/`);
+}
+
+export async function createAvis(encadreurId: number, data: { note: number; commentaire?: string }): Promise<Avis> {
+  return apiFetch<Avis>(`/encadreurs/${encadreurId}/avis/`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAvis(encadreurId: number, avisId: number, data: { note: number; commentaire?: string }): Promise<Avis> {
+  return apiFetch<Avis>(`/encadreurs/${encadreurId}/avis/${avisId}/`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAvis(encadreurId: number, avisId: number): Promise<void> {
+  await apiFetch(`/encadreurs/${encadreurId}/avis/${avisId}/`, { method: "DELETE" });
 }

@@ -1,6 +1,9 @@
 from django.urls import path
 
 from .views import (
+    AvisByEncadreurView,
+    AvisCreateView,
+    AvisDetailView,
     ConversationListView,
     ConversationMessageListView,
     CreateConversationView,
@@ -38,4 +41,8 @@ urlpatterns = [
     path("notifications/", NotificationListView.as_view(), name="notification-list"),
     path("notifications/<int:pk>/read/", MarkNotificationReadView.as_view(), name="notification-read"),
     path("notifications/read-all/", MarkAllNotificationsReadView.as_view(), name="notification-read-all"),
+    # Avis
+    path("encadreurs/<int:encadreur_pk>/avis/", AvisCreateView.as_view(), name="avis-create"),
+    path("encadreurs/<int:encadreur_pk>/avis/liste/", AvisByEncadreurView.as_view(), name="avis-list"),
+    path("encadreurs/<int:encadreur_pk>/avis/<int:pk>/", AvisDetailView.as_view(), name="avis-detail"),
 ]

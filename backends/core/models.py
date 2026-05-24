@@ -118,6 +118,7 @@ class ProfilEncadreur(models.Model):
     disponible = models.BooleanField(default=True)
     verified = models.BooleanField(default=False)
     note_moyenne = models.FloatField(default=0.0)
+    nombre_avis = models.PositiveIntegerField(default=0)
     date_inscription = models.DateTimeField(auto_now_add=True)
 
     # Questionnaire post-inscription
@@ -183,6 +184,7 @@ class Notification(models.Model):
     class Type(models.TextChoices):
         NEW_MESSAGE = "new_message", "Nouveau message"
         PROFILE_VERIFIED = "profile_verified", "Profil vérifié"
+        NEW_REVIEW = "new_review", "Nouvel avis"
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
     type = models.CharField(max_length=30, choices=Type.choices)
@@ -200,3 +202,41 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"[{'Lu' if self.is_read else 'Non lu'}] {self.title}"
+
+
+class Avis(models.Model):
+    parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="avis_donnes")
+    encadreur = models.ForeignKey(
+        ProfilEncadreur, on_delete=models.CASCADE, related_name="avis_recus"
+    )
+    note = models.PositiveSmallIntegerField(help_text="Note de 1 à 5")
+    commentaire = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "core"
+        verbose_name = "Avis"
+        verbose_name_plural = "Avis"
+        unique_together = ("parent", "encadreur")
+        ordering = ("-created_at",)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.note < 1 or self.note > 5:
+            raise ValidationError({"note": "La note doit être comprise entre 1 et 5."})
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        self.clean()
+        super().save(*args, **kwargs)
+        if is_new:
+            Notification.objects.create(
+                user=self.encadreur.user,
+                type=Notification.Type.NEW_REVIEW,
+                title=f"Nouvel avis de {self.parent.email}",
+                message=f"Note : {self.note}/5" + (f" — {self.commentaire[:100]}" if self.commentaire else ""),
+                link=f"/encadreurs/{self.encadreur.id}",
+            )
+
+    def __str__(self):
+        return f"Avis de {self.parent.email} - {self.note}/5"

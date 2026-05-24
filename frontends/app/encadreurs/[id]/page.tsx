@@ -6,6 +6,8 @@ import { createConversation, getEncadreur, ProfilEncadreur } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import RatingStars from "@/components/RatingStars";
+import AvisSection from "@/components/AvisSection";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("fr-FR", {
@@ -127,10 +129,17 @@ export default function EncadreurDetailPage({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-500 mb-1">Note moyenne</p>
-              <p className="text-2xl font-bold text-gray-800">
-                {profil.note_moyenne > 0 ? `★ ${profil.note_moyenne.toFixed(1)}` : "—"}
-              </p>
-              <p className="text-xs text-gray-400">/ 5</p>
+              {profil.note_moyenne > 0 ? (
+                <>
+                  <div className="flex justify-center mb-1">
+                    <RatingStars note={profil.note_moyenne} size="md" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-800">{profil.note_moyenne.toFixed(1)}</p>
+                  <p className="text-xs text-gray-400">{profil.nombre_avis} avis</p>
+                </>
+              ) : (
+                <p className="text-2xl font-bold text-gray-800">—</p>
+              )}
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-500 mb-1">Tarif mensuel</p>
@@ -198,6 +207,8 @@ export default function EncadreurDetailPage({
           </div>
         </div>
       </div>
+
+      <AvisSection encadreurId={profil.id} />
     </div>
   );
 }

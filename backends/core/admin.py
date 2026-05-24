@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Conversation, Matiere, Message, Notification, ProfilEncadreur, User
+from .models import Avis, Conversation, Matiere, Message, Notification, ProfilEncadreur, User
 
 
 @admin.register(User)
@@ -55,3 +55,10 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = ("user", "type", "title", "is_read", "created_at")
     list_filter = ("type", "is_read", "created_at")
     search_fields = ("user__email", "title")
+
+
+@admin.register(Avis)
+class AvisAdmin(admin.ModelAdmin):
+    list_display = ("parent", "encadreur", "note", "created_at")
+    list_filter = ("note", "created_at")
+    search_fields = ("parent__email", "encadreur__user__email", "commentaire")

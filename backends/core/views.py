@@ -11,8 +11,9 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
-from .models import Conversation, Matiere, Message, Notification, ProfilEncadreur, User
+from .models import Avis, Conversation, Matiere, Message, Notification, ProfilEncadreur, User
 from .serializers import (
+    AvisSerializer,
     ConversationListSerializer,
     CreateConversationSerializer,
     LoginSerializer,
@@ -58,6 +59,18 @@ class IsEncadreur(permissions.BasePermission):
         return (
             request.user.is_authenticated
             and request.user.role == User.Role.ENCADREUR
+        )
+
+
+class IsParent(permissions.BasePermission):
+    """Seuls les parents peuvent effectuer cette action."""
+
+    message = "Seuls les parents peuvent effectuer cette action."
+
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated
+            and request.user.role == User.Role.PARENT
         )
 
 
@@ -412,3 +425,40 @@ class MarkAllNotificationsReadView(APIView):
     def post(self, request):
         updated = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response({"marques_lus": updated})
+
+
+# ─── Avis ────────────────────────────────────────────────────
+
+class AvisCreateView(generics.CreateAPIView):
+    serializer_class = AvisSerializer
+    permission_classes = (permissions.IsAuthenticated, IsParent)
+
+    def perform_create(self, serializer):
+        encadreur_id = self.kwargs["encadreur_pk"]
+        encadreur = generics.get_object_or_404(ProfilEncadreur, id=encadreur_id)
+        serializer.save(parent=self.request.user, encadreur=encadreur)
+        logger.info(
+            "AVIS_CREATED | Parent=%s (id=%d) | Encadreur=%s (id=%d) | Note=%d",
+            self.request.user.email, self.request.user.id,
+            encadreur.user.email, encadreur.id,
+            serializer.validated_data["note"],
+        )
+
+
+class AvisByEncadreurView(generics.ListAPIView):
+    serializer_class = AvisSerializer
+    permission_classes = (permissions.AllowAny,)
+    pagination_class = None
+
+    def get_queryset(self):
+        return Avis.objects.filter(
+            encadreur_id=self.kwargs["encadreur_pk"]
+        ).select_related("parent")
+
+
+class AvisDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AvisSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_queryset(self):
+        return Avis.objects.filter(parent=self.request.user)
