@@ -22,6 +22,7 @@ from .views import (
     PaiementCallbackView,
     RegisterView,
     TokenRefreshView,
+    VerifierAccesView,
     VerifierPaiementView,
     api_root,
 )
@@ -54,4 +55,6 @@ urlpatterns = [
     path("paiement/callback/", PaiementCallbackView.as_view(), name="paiement-callback"),
     path("paiement/verifier/<str:token>/", VerifierPaiementView.as_view(), name="paiement-verifier"),
     path("paiement/historique/", HistoriquePaiementsView.as_view(), name="paiement-historique"),
+    # Accès
+    path("encadreurs/<int:encadreur_pk>/verifier-acces/", VerifierAccesView.as_view(), name="verifier-acces"),
 ]

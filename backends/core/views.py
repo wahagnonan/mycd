@@ -345,6 +345,17 @@ class CreateConversationView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         encadreur = User.objects.get(id=serializer.validated_data["encadreur_id"])
+
+        if request.user.role == User.Role.PARENT:
+            profil = ProfilEncadreur.objects.filter(user=encadreur).first()
+            if profil and not Paiement.objects.filter(
+                parent=request.user, encadreur=profil, statut=Paiement.Statut.COMPLETE
+            ).exists():
+                return Response(
+                    {"detail": "Vous devez payer pour accéder à cet encadreur"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         conversation, created = Conversation.objects.get_or_create(
             parent=request.user,
             encadreur=encadreur,
@@ -363,10 +374,22 @@ class ConversationMessageListView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     pagination_class = None
 
+    def _check_parent_paid(self, user, conversation):
+        if user.role != User.Role.PARENT:
+            return True
+        profil = ProfilEncadreur.objects.filter(user=conversation.encadreur).first()
+        if not profil:
+            return True
+        return Paiement.objects.filter(
+            parent=user, encadreur=profil, statut=Paiement.Statut.COMPLETE
+        ).exists()
+
     def get_queryset(self):
         conv = Conversation.objects.get(id=self.kwargs["pk"])
         user = self.request.user
         if user not in (conv.parent, conv.encadreur):
+            return Message.objects.none()
+        if not self._check_parent_paid(user, conv):
             return Message.objects.none()
         return Message.objects.filter(conversation=conv).select_related("sender")
 
@@ -375,6 +398,8 @@ class ConversationMessageListView(generics.ListCreateAPIView):
         user = self.request.user
         if user not in (conversation.parent, conversation.encadreur):
             raise PermissionDenied("Vous ne participez pas à cette conversation")
+        if not self._check_parent_paid(user, conversation):
+            raise PermissionDenied("Vous devez payer pour accéder à cette conversation")
         msg = serializer.save(conversation=conversation, sender=user)
         destinataire = conversation.encadreur if user == conversation.parent else conversation.parent
         Notification.objects.create(
@@ -629,3 +654,18 @@ class HistoriquePaiementsView(generics.ListAPIView):
         if user.role == User.Role.PARENT:
             return Paiement.objects.filter(parent=user).select_related("encadreur__user")
         return Paiement.objects.filter(encadreur__user=user).select_related("parent")
+
+
+# ─── Accès payé ────────────────────────────────────────────
+
+class VerifierAccesView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, encadreur_pk):
+        if request.user.role != User.Role.PARENT:
+            return Response({"acces_paye": True, "est_parent": False})
+        encadreur = generics.get_object_or_404(ProfilEncadreur, id=encadreur_pk)
+        acces = Paiement.objects.filter(
+            parent=request.user, encadreur=encadreur, statut=Paiement.Statut.COMPLETE
+        ).exists()
+        return Response({"acces_paye": acces, "est_parent": True})

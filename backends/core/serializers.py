@@ -52,12 +52,13 @@ class ProfilEncadreurSerializer(serializers.ModelSerializer):
     matiere_ids = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
-    email = serializers.EmailField(source="user.email", read_only=True)
-    phone = serializers.CharField(source="user.phone", read_only=True)
+    email = serializers.SerializerMethodField()
+    phone = serializers.SerializerMethodField()
     ville = serializers.CharField(source="user.ville", read_only=True)
     quartier = serializers.CharField(source="user.quartier", read_only=True)
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     nom = serializers.SerializerMethodField()
+    acces_paye = serializers.SerializerMethodField()
 
     # Champs du questionnaire — en écriture seule pour la soumission initiale
     cgu_acceptees = serializers.BooleanField(write_only=True, required=False)
@@ -69,15 +70,46 @@ class ProfilEncadreurSerializer(serializers.ModelSerializer):
             "id", "user_id", "email", "phone", "nom", "bio", "ville", "quartier",
             "matieres", "matiere_ids",
             "tarif_mois", "tarif_horaire", "type_tarif",
-            "disponible", "verified", "note_moyenne", "date_inscription",
+            "disponible", "verified", "note_moyenne", "nombre_avis", "date_inscription",
             "accepte_deplacement", "niveau_etudes", "niveaux_enseignement",
             "experience_cours", "jours_disponibles", "creneaux_preferes",
-            "cgu_acceptees", "questionnaire_rempli",
+            "cgu_acceptees", "questionnaire_rempli", "acces_paye",
         )
         read_only_fields = (
             "id", "verified", "note_moyenne", "date_inscription",
             "questionnaire_rempli",
         )
+
+    def get_acces_paye(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated or request.user.role != "parent":
+            return False
+        return Paiement.objects.filter(
+            parent=request.user, encadreur=obj, statut=Paiement.Statut.COMPLETE
+        ).exists()
+
+    def get_email(self, obj):
+        parent = self._get_parent_request()
+        if parent is not None and not self._has_paid(parent, obj):
+            return ""
+        return obj.user.email
+
+    def get_phone(self, obj):
+        parent = self._get_parent_request()
+        if parent is not None and not self._has_paid(parent, obj):
+            return ""
+        return obj.user.phone
+
+    def _get_parent_request(self):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.role == "parent":
+            return request.user
+        return None
+
+    def _has_paid(self, parent, profil):
+        return Paiement.objects.filter(
+            parent=parent, encadreur=profil, statut=Paiement.Statut.COMPLETE
+        ).exists()
 
     def get_nom(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
@@ -149,11 +181,12 @@ class ConversationListSerializer(serializers.ModelSerializer):
     nb_non_lus = serializers.SerializerMethodField()
     correspondant_nom = serializers.SerializerMethodField()
     correspondant_email = serializers.SerializerMethodField()
+    acces_paye = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
         fields = ("id", "correspondant_nom", "correspondant_email",
-                  "dernier_message", "nb_non_lus", "updated_at")
+                  "dernier_message", "nb_non_lus", "updated_at", "acces_paye")
 
     def get_correspondant(self, obj, user):
         return obj.encadreur if user == obj.parent else obj.parent
@@ -182,6 +215,18 @@ class ConversationListSerializer(serializers.ModelSerializer):
         return obj.messages.filter(is_read=False).exclude(
             sender=self.context["request"].user
         ).count()
+
+    def get_acces_paye(self, obj):
+        request = self.context["request"]
+        if request.user.role != User.Role.PARENT:
+            return True
+        encadreur = obj.encadreur if request.user == obj.parent else obj.parent
+        profil = ProfilEncadreur.objects.filter(user=encadreur).first()
+        if not profil:
+            return True
+        return Paiement.objects.filter(
+            parent=request.user, encadreur=profil, statut=Paiement.Statut.COMPLETE
+        ).exists()
 
 
 class CreateConversationSerializer(serializers.Serializer):

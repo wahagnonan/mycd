@@ -216,6 +216,7 @@ export interface ProfilEncadreur {
   verified: boolean;
   note_moyenne: number;
   nombre_avis: number;
+  acces_paye?: boolean;
   date_inscription: string;
 
   // Questionnaire post-inscription
@@ -298,6 +299,7 @@ export interface Conversation {
   dernier_message: { content: string; created_at: string; est_moi: boolean } | null;
   nb_non_lus: number;
   updated_at: string;
+  acces_paye?: boolean;
 }
 
 export interface Message {
@@ -430,4 +432,8 @@ export async function verifierPaiement(token: string): Promise<Paiement> {
 
 export async function getHistoriquePaiements(): Promise<Paiement[]> {
   return apiFetch<Paiement[]>("/paiement/historique/");
+}
+
+export async function verifierAcces(encadreurId: number): Promise<{ acces_paye: boolean; est_parent: boolean }> {
+  return apiFetch(`/encadreurs/${encadreurId}/verifier-acces/`);
 }
