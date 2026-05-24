@@ -1,13 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { getCreditStatus } from "@/lib/api";
 import NotificationBell from "./NotificationBell";
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [credits, setCredits] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== "parent") {
+      setCredits(null);
+      return;
+    }
+    let cancelled = false;
+    getCreditStatus()
+      .then((status) => { if (!cancelled) setCredits(status.credits_restants); })
+      .catch(() => { if (!cancelled) setCredits(null); });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, user]);
+
+  const creditLabel = credits !== null
+    ? `${credits} crédit${credits > 1 ? "s" : ""}`
+    : null;
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/90 backdrop-blur">
@@ -22,11 +40,15 @@ export default function Navbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <Link href="/messagerie" className="hover:text-zinc-900">Messagerie</Link>
-              <Link href="/paiement/historique" className="hover:text-zinc-900">Paiements</Link>
               {user?.role === "encadreur" && (
                 <Link href="/mon-profil" className="hover:text-zinc-900">Mon profil</Link>
               )}
               <NotificationBell />
+              {creditLabel && (
+                <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                  {creditLabel}
+                </span>
+              )}
               <span className="text-zinc-900">{user?.email}</span>
               <button
                 onClick={logout}
@@ -76,9 +98,13 @@ export default function Navbar() {
             {isAuthenticated ? (
               <>
                 <Link href="/messagerie" onClick={() => setMenuOpen(false)}>Messagerie</Link>
-                <Link href="/paiement/historique" onClick={() => setMenuOpen(false)}>Paiements</Link>
                 {user?.role === "encadreur" && (
                   <Link href="/mon-profil" onClick={() => setMenuOpen(false)}>Mon profil</Link>
+                )}
+                {creditLabel && (
+                  <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full self-start">
+                    {creditLabel}
+                  </span>
                 )}
                 <span className="text-zinc-900">{user?.email}</span>
                 <button onClick={() => { logout(); setMenuOpen(false); }}

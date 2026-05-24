@@ -281,3 +281,47 @@ class Paiement(models.Model):
 
     def __str__(self):
         return f"Paiement {self.id} — {self.montant} FCFA ({self.statut})"
+
+
+class CreditAchat(models.Model):
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "en_attente", "En attente"
+        COMPLETE = "complete", "Complété"
+        ECHOUE = "echoue", "Échoué"
+
+    parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="credit_achats")
+    credits_achetes = models.PositiveIntegerField(default=3)
+    montant = models.PositiveIntegerField(help_text="Montant payé en FCFA")
+    token_paydunya = models.CharField(max_length=100, blank=True, default="")
+    receipt_url = models.URLField(blank=True, default="")
+    statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.EN_ATTENTE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "core"
+        ordering = ("-created_at",)
+        verbose_name = "Achat de crédits"
+        verbose_name_plural = "Achats de crédits"
+
+    def __str__(self):
+        return f"CreditAchat {self.id} — {self.parent.email} ({self.credits_achetes} crédits, {self.statut})"
+
+
+class CreditUtilisation(models.Model):
+    parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="credits_utilises")
+    encadreur = models.ForeignKey(
+        ProfilEncadreur, on_delete=models.CASCADE, related_name="credits_consommes"
+    )
+    credit_achat = models.ForeignKey(
+        CreditAchat, on_delete=models.SET_NULL, null=True, blank=True, related_name="utilisations"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "core"
+        unique_together = ("parent", "encadreur")
+        verbose_name = "Utilisation de crédit"
+        verbose_name_plural = "Utilisations de crédits"
+
+    def __str__(self):
+        return f"Crédit utilisé: {self.parent.email} → {self.encadreur.user.email}"

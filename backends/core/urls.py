@@ -7,9 +7,12 @@ from .views import (
     ConversationListView,
     ConversationMessageListView,
     CreateConversationView,
+    CreditStatusView,
+    DebloquerEncadreurView,
     EncadreurDetailView,
     EncadreurListView,
     HistoriquePaiementsView,
+    InitierAchatCreditsView,
     InitierPaiementView,
     LoginView,
     MarkAllNotificationsReadView,
@@ -22,7 +25,6 @@ from .views import (
     PaiementCallbackView,
     RegisterView,
     TokenRefreshView,
-    VerifierAccesView,
     VerifierPaiementView,
     api_root,
 )
@@ -55,6 +57,8 @@ urlpatterns = [
     path("paiement/callback/", PaiementCallbackView.as_view(), name="paiement-callback"),
     path("paiement/verifier/<str:token>/", VerifierPaiementView.as_view(), name="paiement-verifier"),
     path("paiement/historique/", HistoriquePaiementsView.as_view(), name="paiement-historique"),
-    # Accès
-    path("encadreurs/<int:encadreur_pk>/verifier-acces/", VerifierAccesView.as_view(), name="verifier-acces"),
+    # Crédits
+    path("credits/statut/", CreditStatusView.as_view(), name="credit-statut"),
+    path("credits/acheter/", InitierAchatCreditsView.as_view(), name="credit-acheter"),
+    path("credits/debloquer/<int:encadreur_pk>/", DebloquerEncadreurView.as_view(), name="credit-debloquer"),
 ]

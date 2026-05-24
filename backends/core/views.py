@@ -13,7 +13,7 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
-from .models import Avis, Conversation, Matiere, Message, Notification, Paiement, ProfilEncadreur, User
+from .models import Avis, Conversation, CreditAchat, CreditUtilisation, Matiere, Message, Notification, Paiement, ProfilEncadreur, User
 from .serializers import (
     AvisSerializer,
     ConversationListSerializer,
@@ -76,6 +76,22 @@ class IsParent(permissions.BasePermission):
             request.user.is_authenticated
             and request.user.role == User.Role.PARENT
         )
+
+
+# ─── Helpers Crédits ───────────────────────────────────────
+
+def get_credits_restants(parent):
+    """Retourne le nombre de crédits restants pour un parent."""
+    total_achetes = CreditAchat.objects.filter(
+        parent=parent, statut=CreditAchat.Statut.COMPLETE
+    ).aggregate(total=models.Sum("credits_achetes"))["total"] or 0
+    total_utilises = CreditUtilisation.objects.filter(parent=parent).count()
+    return total_achetes - total_utilises
+
+
+def a_debloque_encadreur(parent, encadreur):
+    """Vérifie si un parent a déjà débloqué un encadreur."""
+    return CreditUtilisation.objects.filter(parent=parent, encadreur=encadreur).exists()
 
 
 # ─── Vues ───────────────────────────────────────────────────
@@ -346,14 +362,22 @@ class CreateConversationView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         encadreur = User.objects.get(id=serializer.validated_data["encadreur_id"])
 
+        # Vérification des crédits pour les parents
         if request.user.role == User.Role.PARENT:
-            profil = ProfilEncadreur.objects.filter(user=encadreur).first()
-            if profil and not Paiement.objects.filter(
-                parent=request.user, encadreur=profil, statut=Paiement.Statut.COMPLETE
-            ).exists():
+            try:
+                encadreur_profil = ProfilEncadreur.objects.get(user=encadreur)
+            except ProfilEncadreur.DoesNotExist:
                 return Response(
-                    {"detail": "Vous devez payer pour accéder à cet encadreur"},
-                    status=status.HTTP_403_FORBIDDEN,
+                    {"detail": "Encadreur introuvable"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if not a_debloque_encadreur(request.user, encadreur_profil):
+                return Response(
+                    {
+                        "detail": "Vous devez débloquer cet encadreur avant de le contacter. Achetez des crédits.",
+                        "code": "credits_requis",
+                    },
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
                 )
 
         conversation, created = Conversation.objects.get_or_create(
@@ -374,22 +398,10 @@ class ConversationMessageListView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     pagination_class = None
 
-    def _check_parent_paid(self, user, conversation):
-        if user.role != User.Role.PARENT:
-            return True
-        profil = ProfilEncadreur.objects.filter(user=conversation.encadreur).first()
-        if not profil:
-            return True
-        return Paiement.objects.filter(
-            parent=user, encadreur=profil, statut=Paiement.Statut.COMPLETE
-        ).exists()
-
     def get_queryset(self):
         conv = Conversation.objects.get(id=self.kwargs["pk"])
         user = self.request.user
         if user not in (conv.parent, conv.encadreur):
-            return Message.objects.none()
-        if not self._check_parent_paid(user, conv):
             return Message.objects.none()
         return Message.objects.filter(conversation=conv).select_related("sender")
 
@@ -398,8 +410,6 @@ class ConversationMessageListView(generics.ListCreateAPIView):
         user = self.request.user
         if user not in (conversation.parent, conversation.encadreur):
             raise PermissionDenied("Vous ne participez pas à cette conversation")
-        if not self._check_parent_paid(user, conversation):
-            raise PermissionDenied("Vous devez payer pour accéder à cette conversation")
         msg = serializer.save(conversation=conversation, sender=user)
         destinataire = conversation.encadreur if user == conversation.parent else conversation.parent
         Notification.objects.create(
@@ -589,6 +599,7 @@ class PaiementCallbackView(APIView):
         receipt_url = data.get("receipt_url", "")
 
         if statut == "completed":
+            # Essayer d'abord un paiement classique
             updated = Paiement.objects.filter(
                 token_paydunya=token, statut=Paiement.Statut.EN_ATTENTE
             ).update(
@@ -608,11 +619,40 @@ class PaiementCallbackView(APIView):
                     "PAIEMENT_COMPLETE | token=%s | montant=%d",
                     token, paiement.montant,
                 )
+            else:
+                # Essayer un achat de crédits
+                updated = CreditAchat.objects.filter(
+                    token_paydunya=token, statut=CreditAchat.Statut.EN_ATTENTE
+                ).update(
+                    statut=CreditAchat.Statut.COMPLETE,
+                    receipt_url=receipt_url,
+                )
+                if updated:
+                    credit_achat = CreditAchat.objects.get(token_paydunya=token)
+                    Notification.objects.create(
+                        user=credit_achat.parent,
+                        type=Notification.Type.PAYMENT_RECEIVED,
+                        title="Achat de crédits réussi",
+                        message=f"Vous avez acheté {credit_achat.credits_achetes} crédits de contact.",
+                        link="/encadreurs",
+                    )
+                    logger.info(
+                        "CREDIT_ACHAT_COMPLETE | id=%d | token=%s | credits=%d",
+                        credit_achat.id, token, credit_achat.credits_achetes,
+                    )
         elif statut == "canceled":
-            Paiement.objects.filter(
+            # Essayer paiement classique
+            paiement_updated = Paiement.objects.filter(
                 token_paydunya=token, statut=Paiement.Statut.EN_ATTENTE
             ).update(statut=Paiement.Statut.ECHOUE)
-            logger.info("PAIEMENT_ANNULE | token=%s", token)
+            if paiement_updated:
+                logger.info("PAIEMENT_ANNULE | token=%s", token)
+            else:
+                # Essayer achat de crédits
+                CreditAchat.objects.filter(
+                    token_paydunya=token, statut=CreditAchat.Statut.EN_ATTENTE
+                ).update(statut=CreditAchat.Statut.ECHOUE)
+                logger.info("CREDIT_ACHAT_ANNULE | token=%s", token)
 
         return Response({"ok": True})
 
@@ -656,16 +696,146 @@ class HistoriquePaiementsView(generics.ListAPIView):
         return Paiement.objects.filter(encadreur__user=user).select_related("parent")
 
 
-# ─── Accès payé ────────────────────────────────────────────
+# ─── Crédits ────────────────────────────────────────────────
 
-class VerifierAccesView(APIView):
+class CreditStatusView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
-    def get(self, request, encadreur_pk):
-        if request.user.role != User.Role.PARENT:
-            return Response({"acces_paye": True, "est_parent": False})
-        encadreur = generics.get_object_or_404(ProfilEncadreur, id=encadreur_pk)
-        acces = Paiement.objects.filter(
-            parent=request.user, encadreur=encadreur, statut=Paiement.Statut.COMPLETE
-        ).exists()
-        return Response({"acces_paye": acces, "est_parent": True})
+    def get(self, request):
+        parent = request.user
+        total_achetes = CreditAchat.objects.filter(
+            parent=parent, statut=CreditAchat.Statut.COMPLETE
+        ).aggregate(total=models.Sum("credits_achetes"))["total"] or 0
+        total_utilises = CreditUtilisation.objects.filter(parent=parent).count()
+        credits_restants = total_achetes - total_utilises
+        debloque_ids = list(
+            CreditUtilisation.objects.filter(parent=parent).values_list("encadreur_id", flat=True)
+        )
+        return Response({
+            "credits_restants": credits_restants,
+            "total_achetes": total_achetes,
+            "total_utilises": total_utilises,
+            "debloque_ids": debloque_ids,
+        })
+
+
+class InitierAchatCreditsView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsParent)
+
+    def post(self, request):
+        from .paydunya_config import creer_facture
+
+        montant = 1000
+        credits = 3
+        parent_nom = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
+
+        credit_achat = CreditAchat.objects.create(
+            parent=request.user,
+            credits_achetes=credits,
+            montant=montant,
+        )
+
+        try:
+            succes, response = creer_facture(
+                montant=montant,
+                description="Achat de 3 crédits de contact MYCD",
+                parent_nom=parent_nom,
+                parent_email=request.user.email,
+                parent_phone=request.user.phone,
+                credit_achat_id=credit_achat.id,
+            )
+
+            if succes:
+                credit_achat.token_paydunya = response.get("token", "")
+                credit_achat.receipt_url = response.get("receipt_url", "")
+                credit_achat.save(update_fields=["token_paydunya", "receipt_url"])
+                logger.info(
+                    "CREDIT_ACHAT_INITIE | id=%d | montant=%d | token=%s",
+                    credit_achat.id, montant, credit_achat.token_paydunya,
+                )
+                return Response({
+                    "credit_achat_id": credit_achat.id,
+                    "invoice_url": response.get("response_text"),
+                })
+            else:
+                credit_achat.statut = CreditAchat.Statut.ECHOUE
+                credit_achat.save(update_fields=["statut"])
+                logger.warning(
+                    "CREDIT_ACHAT_ECHEC | id=%d | response=%s",
+                    credit_achat.id, response,
+                )
+                return Response(
+                    {"detail": "Erreur lors de la création de la facture PayDunya"},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+        except Exception:
+            credit_achat.statut = CreditAchat.Statut.ECHOUE
+            credit_achat.save(update_fields=["statut"])
+            logger.exception("CREDIT_ACHAT_EXCEPTION | id=%d", credit_achat.id)
+            return Response(
+                {"detail": "Erreur lors de la communication avec PayDunya"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+
+
+
+
+class DebloquerEncadreurView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsParent)
+
+    def post(self, request, encadreur_pk):
+        encadreur_profil = generics.get_object_or_404(ProfilEncadreur, id=encadreur_pk)
+
+        # Vérifier si déjà débloqué
+        if a_debloque_encadreur(request.user, encadreur_profil):
+            # Retourner la conversation existante
+            conversation, _ = Conversation.objects.get_or_create(
+                parent=request.user,
+                encadreur=encadreur_profil.user,
+            )
+            return Response({
+                "conversation_id": conversation.id,
+                "credit_consomme": False,
+            })
+
+        # Vérifier les crédits restants
+        if get_credits_restants(request.user) <= 0:
+            return Response(
+                {"detail": "Crédits insuffisants. Achetez des crédits pour contacter cet encadreur.",
+                 "code": "credits_insuffisants"},
+                status=status.HTTP_402_PAYMENT_REQUIRED,
+            )
+
+        # Créer l'utilisation de crédit
+        CreditUtilisation.objects.create(
+            parent=request.user,
+            encadreur=encadreur_profil,
+        )
+
+        # Créer ou récupérer la conversation
+        conversation, _ = Conversation.objects.get_or_create(
+            parent=request.user,
+            encadreur=encadreur_profil.user,
+        )
+
+        # Notification pour l'encadreur
+        Notification.objects.create(
+            user=encadreur_profil.user,
+            type=Notification.Type.NEW_MESSAGE,
+            title=f"{request.user.first_name or request.user.email} vous a débloqué",
+            message=f"Un parent a utilisé un crédit pour vous contacter.",
+            link=f"/messagerie/{conversation.id}",
+        )
+
+        logger.info(
+            "ENCADREUR_DEBLOQUE | Parent=%s (id=%d) | Encadreur=%s (id=%d) | Conversation=%d",
+            request.user.email, request.user.id,
+            encadreur_profil.user.email, encadreur_profil.id,
+            conversation.id,
+        )
+
+        return Response({
+            "conversation_id": conversation.id,
+            "credit_consomme": True,
+        })

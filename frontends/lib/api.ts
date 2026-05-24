@@ -216,8 +216,8 @@ export interface ProfilEncadreur {
   verified: boolean;
   note_moyenne: number;
   nombre_avis: number;
-  acces_paye?: boolean;
   date_inscription: string;
+  debloque: boolean;
 
   // Questionnaire post-inscription
   accepte_deplacement: boolean;
@@ -299,7 +299,6 @@ export interface Conversation {
   dernier_message: { content: string; created_at: string; est_moi: boolean } | null;
   nb_non_lus: number;
   updated_at: string;
-  acces_paye?: boolean;
 }
 
 export interface Message {
@@ -434,6 +433,39 @@ export async function getHistoriquePaiements(): Promise<Paiement[]> {
   return apiFetch<Paiement[]>("/paiement/historique/");
 }
 
-export async function verifierAcces(encadreurId: number): Promise<{ acces_paye: boolean; est_parent: boolean }> {
-  return apiFetch(`/encadreurs/${encadreurId}/verifier-acces/`);
+// ─── Crédits ──────────────────────────────────────────────
+
+export interface CreditStatus {
+  credits_restants: number;
+  total_achetes: number;
+  total_utilises: number;
+  debloque_ids: number[];
+}
+
+export interface CreditAchat {
+  id: number;
+  parent: number;
+  credits_achetes: number;
+  montant: number;
+  token_paydunya: string;
+  receipt_url: string;
+  statut: "en_attente" | "complete" | "echoue";
+  created_at: string;
+}
+
+export async function getCreditStatus(): Promise<CreditStatus> {
+  return apiFetch<CreditStatus>("/credits/statut/");
+}
+
+export async function acheterCredits(): Promise<{ credit_achat_id: number; invoice_url: string }> {
+  return apiFetch<{ credit_achat_id: number; invoice_url: string }>("/credits/acheter/", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+export async function debloquerEncadreur(encadreurPk: number): Promise<{ conversation_id: number; credit_consomme: boolean }> {
+  return apiFetch<{ conversation_id: number; credit_consomme: boolean }>(`/credits/debloquer/${encadreurPk}/`, {
+    method: "POST",
+  });
 }

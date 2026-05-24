@@ -49,22 +49,13 @@ export default function MessageriePage() {
           {conversations.map((c) => (
               <Link
                 key={c.id}
-                href={c.acces_paye === false ? "#" : `/messagerie/${c.id}`}
-                className={`block border rounded-xl p-4 transition ${
-                  c.acces_paye === false
-                    ? "border-gray-200 opacity-60 cursor-not-allowed"
-                    : "border-gray-200 hover:shadow-md"
-                }`}
+                href={`/messagerie/${c.id}`}
+                className="block border border-gray-200 rounded-xl p-4 transition hover:shadow-md"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-800 truncate">{c.correspondant_nom}</h3>
-                      {c.acces_paye === false && (
-                        <svg className="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      )}
                       {c.nb_non_lus > 0 && (
                       <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
                         {c.nb_non_lus}
@@ -77,9 +68,6 @@ export default function MessageriePage() {
                       {c.dernier_message.est_moi ? "Vous : " : ""}
                       {c.dernier_message.content}
                     </p>
-                  )}
-                  {c.acces_paye === false && (
-                    <p className="text-xs text-orange-500 mt-1">Payez pour accéder à cette conversation</p>
                   )}
                 </div>
                 <span className="text-xs text-gray-400 ml-4">

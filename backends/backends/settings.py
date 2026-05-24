@@ -212,10 +212,10 @@ PAYDUNYA = {
     ),
     "RETURN_URL": os.environ.get(
         "PAYDUNYA_RETURN_URL",
-        "http://localhost:3000/paiement/succes",
+        "http://localhost:3000/deblocage/succes",
     ),
     "CANCEL_URL": os.environ.get(
         "PAYDUNYA_CANCEL_URL",
-        "http://localhost:3000/paiement/annule",
+        "http://localhost:3000/deblocage/annule",
     ),
 }
