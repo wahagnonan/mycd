@@ -185,6 +185,7 @@ class Notification(models.Model):
         NEW_MESSAGE = "new_message", "Nouveau message"
         PROFILE_VERIFIED = "profile_verified", "Profil vérifié"
         NEW_REVIEW = "new_review", "Nouvel avis"
+        PAYMENT_RECEIVED = "payment_received", "Paiement reçu"
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
     type = models.CharField(max_length=30, choices=Type.choices)
@@ -240,3 +241,43 @@ class Avis(models.Model):
 
     def __str__(self):
         return f"Avis de {self.parent.email} - {self.note}/5"
+
+
+class Paiement(models.Model):
+    class TypePaiement(models.TextChoices):
+        COURS_MOIS = "cours_mois", "Cours au mois"
+        COURS_HORAIRE = "cours_horaire", "Cours à l'heure"
+
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "en_attente", "En attente"
+        COMPLETE = "complete", "Complété"
+        ECHOUE = "echoue", "Échoué"
+        REMBOURSE = "rembourse", "Remboursé"
+
+    parent = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="paiements_emis"
+    )
+    encadreur = models.ForeignKey(
+        ProfilEncadreur, on_delete=models.CASCADE, related_name="paiements_recus"
+    )
+    montant = models.PositiveIntegerField(help_text="Montant en FCFA")
+    type = models.CharField(
+        max_length=20, choices=TypePaiement.choices, default=TypePaiement.COURS_MOIS
+    )
+    statut = models.CharField(
+        max_length=20, choices=Statut.choices, default=Statut.EN_ATTENTE
+    )
+    token_paydunya = models.CharField(max_length=100, blank=True, default="")
+    receipt_url = models.URLField(blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "core"
+        verbose_name = "Paiement"
+        verbose_name_plural = "Paiements"
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"Paiement {self.id} — {self.montant} FCFA ({self.statut})"

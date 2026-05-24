@@ -9,6 +9,8 @@ from .views import (
     CreateConversationView,
     EncadreurDetailView,
     EncadreurListView,
+    HistoriquePaiementsView,
+    InitierPaiementView,
     LoginView,
     MarkAllNotificationsReadView,
     MarkAsReadView,
@@ -17,8 +19,10 @@ from .views import (
     MeView,
     MonProfilView,
     NotificationListView,
+    PaiementCallbackView,
     RegisterView,
     TokenRefreshView,
+    VerifierPaiementView,
     api_root,
 )
 
@@ -45,4 +49,9 @@ urlpatterns = [
     path("encadreurs/<int:encadreur_pk>/avis/", AvisCreateView.as_view(), name="avis-create"),
     path("encadreurs/<int:encadreur_pk>/avis/liste/", AvisByEncadreurView.as_view(), name="avis-list"),
     path("encadreurs/<int:encadreur_pk>/avis/<int:pk>/", AvisDetailView.as_view(), name="avis-detail"),
+    # Paiement
+    path("paiement/initier/<int:encadreur_pk>/", InitierPaiementView.as_view(), name="paiement-initier"),
+    path("paiement/callback/", PaiementCallbackView.as_view(), name="paiement-callback"),
+    path("paiement/verifier/<str:token>/", VerifierPaiementView.as_view(), name="paiement-verifier"),
+    path("paiement/historique/", HistoriquePaiementsView.as_view(), name="paiement-historique"),
 ]

@@ -1,4 +1,6 @@
+import hashlib
 import logging
+from urllib.parse import urlencode
 
 from django.db import models
 from django.contrib.auth import authenticate
@@ -11,15 +13,17 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
-from .models import Avis, Conversation, Matiere, Message, Notification, ProfilEncadreur, User
+from .models import Avis, Conversation, Matiere, Message, Notification, Paiement, ProfilEncadreur, User
 from .serializers import (
     AvisSerializer,
     ConversationListSerializer,
     CreateConversationSerializer,
+    InitierPaiementSerializer,
     LoginSerializer,
     MatiereSerializer,
     MessageSerializer,
     NotificationSerializer,
+    PaiementSerializer,
     ProfilEncadreurSerializer,
     RegisterSerializer,
     UserSerializer,
@@ -462,3 +466,166 @@ class AvisDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Avis.objects.filter(parent=self.request.user)
+
+
+# ─── Paiement ───────────────────────────────────────────────
+
+class InitierPaiementView(generics.GenericAPIView):
+    serializer_class = InitierPaiementSerializer
+    permission_classes = (permissions.IsAuthenticated, IsParent)
+
+    def post(self, request, encadreur_pk):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        encadreur = generics.get_object_or_404(ProfilEncadreur, id=encadreur_pk)
+
+        from .paydunya_config import creer_facture
+
+        parent_nom = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.email
+        description = serializer.validated_data.get("description") or f"Paiement pour {encadreur.user.email}"
+
+        paiement = Paiement.objects.create(
+            parent=request.user,
+            encadreur=encadreur,
+            montant=serializer.validated_data["montant"],
+            type=serializer.validated_data["type"],
+            description=description,
+        )
+
+        try:
+            succes, response = creer_facture(
+                montant=paiement.montant,
+                description=description,
+                parent_nom=parent_nom,
+                parent_email=request.user.email,
+                parent_phone=request.user.phone,
+                paiement_id=paiement.id,
+            )
+
+            if succes:
+                paiement.token_paydunya = response.get("token", "")
+                paiement.receipt_url = response.get("receipt_url", "")
+                paiement.save(update_fields=["token_paydunya", "receipt_url"])
+                logger.info(
+                    "PAIEMENT_INITIE | id=%d | montant=%d | token=%s",
+                    paiement.id, paiement.montant, paiement.token_paydunya,
+                )
+                return Response({
+                    "paiement_id": paiement.id,
+                    "invoice_url": response.get("response_text"),
+                    "token": paiement.token_paydunya,
+                })
+            else:
+                paiement.statut = Paiement.Statut.ECHOUE
+                paiement.save(update_fields=["statut"])
+                logger.warning(
+                    "PAIEMENT_ECHEC | id=%d | response=%s",
+                    paiement.id, response,
+                )
+                return Response(
+                    {"detail": "Erreur lors de la création de la facture PayDunya"},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+        except Exception as e:
+            paiement.statut = Paiement.Statut.ECHOUE
+            paiement.save(update_fields=["statut"])
+            logger.exception("PAIEMENT_EXCEPTION | id=%d", paiement.id)
+            return Response(
+                {"detail": "Erreur lors de la communication avec PayDunya"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+
+class PaiementCallbackView(APIView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        data = request.POST.get("data")
+        if not data:
+            return Response({"detail": "Données manquantes"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            import json
+            data = json.loads(data) if isinstance(data, str) else data
+        except (json.JSONDecodeError, TypeError):
+            return Response({"detail": "Données invalides"}, status=status.HTTP_400_BAD_REQUEST)
+
+        master_key = settings.PAYDUNYA["MASTER_KEY"]
+        expected_hash = hashlib.sha512(master_key.encode()).hexdigest()
+        received_hash = data.get("hash", "")
+
+        if received_hash != expected_hash:
+            logger.warning("PAIEMENT_CALLBACK_HASH_INVALIDE | hash=%s", received_hash)
+            return Response({"detail": "Hash invalide"}, status=status.HTTP_403_FORBIDDEN)
+
+        statut = data.get("status")
+        token = data.get("invoice", {}).get("token", "")
+        receipt_url = data.get("receipt_url", "")
+
+        if statut == "completed":
+            updated = Paiement.objects.filter(
+                token_paydunya=token, statut=Paiement.Statut.EN_ATTENTE
+            ).update(
+                statut=Paiement.Statut.COMPLETE,
+                receipt_url=receipt_url,
+            )
+            if updated:
+                paiement = Paiement.objects.get(token_paydunya=token)
+                Notification.objects.create(
+                    user=paiement.encadreur.user,
+                    type=Notification.Type.PAYMENT_RECEIVED,
+                    title=f"Paiement reçu de {paiement.parent.email}",
+                    message=f"{paiement.montant} FCFA — {paiement.description[:100]}",
+                    link="/messagerie",
+                )
+                logger.info(
+                    "PAIEMENT_COMPLETE | token=%s | montant=%d",
+                    token, paiement.montant,
+                )
+        elif statut == "canceled":
+            Paiement.objects.filter(
+                token_paydunya=token, statut=Paiement.Statut.EN_ATTENTE
+            ).update(statut=Paiement.Statut.ECHOUE)
+            logger.info("PAIEMENT_ANNULE | token=%s", token)
+
+        return Response({"ok": True})
+
+
+class VerifierPaiementView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, token):
+        paiement = generics.get_object_or_404(
+            Paiement, token_paydunya=token, parent=request.user
+        )
+
+        from .paydunya_config import confirmer_paiement
+
+        try:
+            succes, response = confirmer_paiement(token)
+            if succes:
+                paydunya_status = response.get("status")
+                if paydunya_status == "completed" and paiement.statut != Paiement.Statut.COMPLETE:
+                    paiement.statut = Paiement.Statut.COMPLETE
+                    paiement.receipt_url = response.get("receipt_url", "")
+                    paiement.save(update_fields=["statut", "receipt_url"])
+                elif paydunya_status == "canceled":
+                    paiement.statut = Paiement.Statut.ECHOUE
+                    paiement.save(update_fields=["statut"])
+        except Exception:
+            logger.exception("VERIFIER_PAIEMENT_ERREUR | token=%s", token)
+
+        return Response(PaiementSerializer(paiement).data)
+
+
+class HistoriquePaiementsView(generics.ListAPIView):
+    serializer_class = PaiementSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+    pagination_class = None
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == User.Role.PARENT:
+            return Paiement.objects.filter(parent=user).select_related("encadreur__user")
+        return Paiement.objects.filter(encadreur__user=user).select_related("parent")

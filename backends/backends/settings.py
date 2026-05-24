@@ -197,3 +197,25 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
 ).split(",")
+
+# PayDunya
+PAYDUNYA = {
+    "MASTER_KEY": os.environ["PAYDUNYA_MASTER_KEY"],
+    "PRIVATE_KEY": os.environ["PAYDUNYA_PRIVATE_KEY"],
+    "TOKEN": os.environ["PAYDUNYA_TOKEN"],
+    "MODE": os.environ.get("PAYDUNYA_MODE", "test"),
+    "STORE_NAME": "MYCD",
+    "STORE_TAGLINE": "Mise en relation parents-encadreurs",
+    "CALLBACK_URL": os.environ.get(
+        "PAYDUNYA_CALLBACK_URL",
+        "http://localhost:8000/api/paiement/callback/",
+    ),
+    "RETURN_URL": os.environ.get(
+        "PAYDUNYA_RETURN_URL",
+        "http://localhost:3000/paiement/succes",
+    ),
+    "CANCEL_URL": os.environ.get(
+        "PAYDUNYA_CANCEL_URL",
+        "http://localhost:3000/paiement/annule",
+    ),
+}

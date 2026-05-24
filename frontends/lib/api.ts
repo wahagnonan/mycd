@@ -395,3 +395,39 @@ export async function updateAvis(encadreurId: number, avisId: number, data: { no
 export async function deleteAvis(encadreurId: number, avisId: number): Promise<void> {
   await apiFetch(`/encadreurs/${encadreurId}/avis/${avisId}/`, { method: "DELETE" });
 }
+
+// ─── Paiement ──────────────────────────────────────────────
+
+export interface Paiement {
+  id: number;
+  parent: number;
+  parent_nom: string;
+  encadreur: number;
+  encadreur_nom: string;
+  montant: number;
+  type: "cours_mois" | "cours_horaire";
+  statut: "en_attente" | "complete" | "echoue" | "rembourse";
+  token_paydunya: string;
+  receipt_url: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function initierPaiement(
+  encadreurId: number,
+  data: { montant: number; type: string; description?: string }
+): Promise<{ paiement_id: number; invoice_url: string; token: string }> {
+  return apiFetch(`/paiement/initier/${encadreurId}/`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function verifierPaiement(token: string): Promise<Paiement> {
+  return apiFetch<Paiement>(`/paiement/verifier/${token}/`);
+}
+
+export async function getHistoriquePaiements(): Promise<Paiement[]> {
+  return apiFetch<Paiement[]>("/paiement/historique/");
+}

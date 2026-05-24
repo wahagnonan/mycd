@@ -176,34 +176,44 @@ export default function EncadreurDetailPage({
             {contactError && (
               <p className="text-red-500 text-sm">{contactError}</p>
             )}
-            <button
-              onClick={async () => {
-                setContactError("");
-                if (!isAuthenticated) { router.push("/login"); return; }
-                if (user?.role !== "parent") {
-                  router.push("/messagerie");
-                  return;
-                }
-                if (!profil.user_id) {
-                  setContactError("Impossible de contacter cet encadreur");
-                  return;
-                }
-                setContactLoading(true);
-                try {
-                  const conv = await createConversation(profil.user_id);
-                  router.push(`/messagerie/${conv.id}`);
-                } catch (err) {
-                  setContactError(
-                    err instanceof Error ? err.message : "Erreur réseau"
-                  );
-                  setContactLoading(false);
-                }
-              }}
-              disabled={contactLoading}
-              className="bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600 transition font-medium text-sm disabled:opacity-50"
-            >
-              {contactLoading ? "..." : user?.role === "parent" ? "Contacter" : "Messagerie"}
-            </button>
+            <div className="flex items-center gap-2">
+              {user?.role === "parent" && (
+                <Link
+                  href={`/paiement/${profil.id}`}
+                  className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition font-medium text-sm"
+                >
+                  Payer
+                </Link>
+              )}
+              <button
+                onClick={async () => {
+                  setContactError("");
+                  if (!isAuthenticated) { router.push("/login"); return; }
+                  if (user?.role !== "parent") {
+                    router.push("/messagerie");
+                    return;
+                  }
+                  if (!profil.user_id) {
+                    setContactError("Impossible de contacter cet encadreur");
+                    return;
+                  }
+                  setContactLoading(true);
+                  try {
+                    const conv = await createConversation(profil.user_id);
+                    router.push(`/messagerie/${conv.id}`);
+                  } catch (err) {
+                    setContactError(
+                      err instanceof Error ? err.message : "Erreur réseau"
+                    );
+                    setContactLoading(false);
+                  }
+                }}
+                disabled={contactLoading}
+                className="bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600 transition font-medium text-sm disabled:opacity-50"
+              >
+                {contactLoading ? "..." : user?.role === "parent" ? "Contacter" : "Messagerie"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

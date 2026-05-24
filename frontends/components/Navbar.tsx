@@ -22,6 +22,7 @@ export default function Navbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <Link href="/messagerie" className="hover:text-zinc-900">Messagerie</Link>
+              <Link href="/paiement/historique" className="hover:text-zinc-900">Paiements</Link>
               {user?.role === "encadreur" && (
                 <Link href="/mon-profil" className="hover:text-zinc-900">Mon profil</Link>
               )}
@@ -75,6 +76,7 @@ export default function Navbar() {
             {isAuthenticated ? (
               <>
                 <Link href="/messagerie" onClick={() => setMenuOpen(false)}>Messagerie</Link>
+                <Link href="/paiement/historique" onClick={() => setMenuOpen(false)}>Paiements</Link>
                 {user?.role === "encadreur" && (
                   <Link href="/mon-profil" onClick={() => setMenuOpen(false)}>Mon profil</Link>
                 )}
