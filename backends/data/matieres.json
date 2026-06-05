@@ -1,0 +1,22 @@
+[
+  { "nom": "Mathématiques" },
+  { "nom": "Français" },
+  { "nom": "Anglais" },
+  { "nom": "Physique" },
+  { "nom": "Chimie" },
+  { "nom": "Sciences de la Vie et de la Terre" },
+  { "nom": "Histoire-Géographie" },
+  { "nom": "Philosophie" },
+  { "nom": "Sciences Économiques et Sociales" },
+  { "nom": "Allemand" },
+  { "nom": "Espagnol" },
+  { "nom": "Informatique" },
+  { "nom": "Aide aux devoirs" },
+  { "nom": "Lecture" },
+  { "nom": "Écriture" },
+  { "nom": "Comptabilité" },
+  { "nom": "Gestion" },
+  { "nom": "Droit" },
+  { "nom": "Musique" },
+  { "nom": "Dessin" }
+]

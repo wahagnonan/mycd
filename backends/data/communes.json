@@ -1,0 +1,166 @@
+[
+  {
+    "ville": "Abidjan",
+    "communes": ["Abobo", "Adjamé", "Attécoubé", "Cocody", "Koumassi", "Marcory", "Plateau", "Port-Bouët", "Treichville", "Yopougon", "Bingerville", "Anyama"]
+  },
+  {
+    "ville": "Bouaké",
+    "communes": ["Bouaké"]
+  },
+  {
+    "ville": "Korhogo",
+    "communes": ["Korhogo"]
+  },
+  {
+    "ville": "Yamoussoukro",
+    "communes": ["Yamoussoukro"]
+  },
+  {
+    "ville": "San-Pédro",
+    "communes": ["San-Pédro"]
+  },
+  {
+    "ville": "Gagnoa",
+    "communes": ["Gagnoa"]
+  },
+  {
+    "ville": "Man",
+    "communes": ["Man"]
+  },
+  {
+    "ville": "Daloa",
+    "communes": ["Daloa"]
+  },
+  {
+    "ville": "Abengourou",
+    "communes": ["Abengourou"]
+  },
+  {
+    "ville": "Aboisso",
+    "communes": ["Aboisso"]
+  },
+  {
+    "ville": "Adiaké",
+    "communes": ["Adiaké"]
+  },
+  {
+    "ville": "Adzopé",
+    "communes": ["Adzopé"]
+  },
+  {
+    "ville": "Agboville",
+    "communes": ["Agboville"]
+  },
+  {
+    "ville": "Bondoukou",
+    "communes": ["Bondoukou"]
+  },
+  {
+    "ville": "Bongouanou",
+    "communes": ["Bongouanou"]
+  },
+  {
+    "ville": "Bouaflé",
+    "communes": ["Bouaflé"]
+  },
+  {
+    "ville": "Boundiali",
+    "communes": ["Boundiali"]
+  },
+  {
+    "ville": "Dabou",
+    "communes": ["Dabou"]
+  },
+  {
+    "ville": "Daoukro",
+    "communes": ["Daoukro"]
+  },
+  {
+    "ville": "Dimbokro",
+    "communes": ["Dimbokro"]
+  },
+  {
+    "ville": "Divo",
+    "communes": ["Divo"]
+  },
+  {
+    "ville": "Duékoué",
+    "communes": ["Duékoué"]
+  },
+  {
+    "ville": "Ferkessédougou",
+    "communes": ["Ferkessédougou"]
+  },
+  {
+    "ville": "Grand-Bassam",
+    "communes": ["Grand-Bassam"]
+  },
+  {
+    "ville": "Guiglo",
+    "communes": ["Guiglo"]
+  },
+  {
+    "ville": "Issia",
+    "communes": ["Issia"]
+  },
+  {
+    "ville": "Jacqueville",
+    "communes": ["Jacqueville"]
+  },
+  {
+    "ville": "Katiola",
+    "communes": ["Katiola"]
+  },
+  {
+    "ville": "Lakota",
+    "communes": ["Lakota"]
+  },
+  {
+    "ville": "Mankono",
+    "communes": ["Mankono"]
+  },
+  {
+    "ville": "Odienné",
+    "communes": ["Odienné"]
+  },
+  {
+    "ville": "Oumé",
+    "communes": ["Oumé"]
+  },
+  {
+    "ville": "Sassandra",
+    "communes": ["Sassandra"]
+  },
+  {
+    "ville": "Séguéla",
+    "communes": ["Séguéla"]
+  },
+  {
+    "ville": "Sinfra",
+    "communes": ["Sinfra"]
+  },
+  {
+    "ville": "Soubré",
+    "communes": ["Soubré"]
+  },
+  {
+    "ville": "Tiassalé",
+    "communes": ["Tiassalé"]
+  },
+  {
+    "ville": "Touba",
+    "communes": ["Touba"]
+  },
+  {
+    "ville": "Toumodi",
+    "communes": ["Toumodi"]
+  },
+  {
+    "ville": "Vavoua",
+    "communes": ["Vavoua"]
+  },
+  {
+    "ville": "Zuénoula",
+    "communes": ["Zuénoula"]
+  }
+]
