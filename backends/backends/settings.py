@@ -56,7 +56,7 @@ LOGGING = {
         "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
     },
     "loggers": {
-        "backends.core.middleware": {
+        "backends.middleware": {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
@@ -78,7 +78,12 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
-    "backends.core",
+    "backends.accounts",
+    "backends.encadreurs",
+    "backends.messagerie",
+    "backends.notifications",
+    "backends.avis",
+    "backends.paiement",
 ]
 
 MIDDLEWARE = [
@@ -90,7 +95,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "corsheaders.middleware.CorsMiddleware",
-    "backends.core.middleware.SecurityLoggingMiddleware",
+    "backends.middleware.SecurityLoggingMiddleware",
 ]
 
 ROOT_URLCONF = 'backends.backends.urls'
@@ -160,7 +165,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-AUTH_USER_MODEL = "core.User"
+AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
