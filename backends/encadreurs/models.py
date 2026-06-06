@@ -76,6 +76,7 @@ class ProfilEncadreur(models.Model):
     experience_cours = models.CharField(max_length=20, choices=EXPERIENCE_COURS_CHOICES, blank=True, default="")
     jours_disponibles = models.JSONField(default=list, blank=True)
     creneaux_preferes = models.JSONField(default=list, blank=True)
+    autre_matiere = models.CharField(max_length=200, blank=True, default="", help_text="Autre matière (si 'Autre' est sélectionné)")
     cgu_acceptees = models.BooleanField(default=False)
     questionnaire_rempli = models.BooleanField(default=False)
 

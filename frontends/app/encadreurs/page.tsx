@@ -1,21 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getEncadreurs, Matiere, getMatieres, ProfilEncadreur } from "@/lib/api";
+import { getEncadreurs, Matiere, getMatieres, ProfilEncadreur, getVilles, VilleData } from "@/lib/api";
 import Link from "next/link";
-
-const COMMUNES = [
-  "Abengourou", "Abobo", "Aboisso", "Adiaké", "Adjamé", "Adzopé",
-  "Agboville", "Anyama", "Attécoubé", "Bingerville", "Bondoukou",
-  "Bongouanou", "Bouaflé", "Bouaké", "Boundiali", "Cocody",
-  "Dabou", "Daloa", "Daoukro", "Dimbokro", "Divo", "Duékoué",
-  "Ferkessédougou", "Gagnoa", "Grand-Bassam", "Guiglo", "Issia",
-  "Jacqueville", "Katiola", "Korhogo", "Koumassi", "Lakota",
-  "Man", "Mankono", "Marcory", "Odienné", "Oumé", "Plateau",
-  "Port-Bouët", "San-Pédro", "Sassandra", "Séguéla", "Sinfra",
-  "Soubré", "Tiassalé", "Touba", "Toumodi", "Treichville",
-  "Vavoua", "Yamoussoukro", "Yopougon", "Zuénoula",
-];
 
 const SUGGESTIONS = [
   { label: "Maths à Cocody", ville: "Cocody" },
@@ -29,50 +16,78 @@ export default function EncadreursPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [matieres, setMatieres] = useState<Matiere[]>([]);
+  const [villes, setVilles] = useState<VilleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [ville, setVille] = useState("");
+  const [villeAutre, setVilleAutre] = useState("");
+  const [quartier, setQuartier] = useState("");
   const [matiereFilter, setMatiereFilter] = useState("");
+  const [matiereAutre, setMatiereAutre] = useState("");
   const [activeVille, setActiveVille] = useState("");
+  const [activeQuartier, setActiveQuartier] = useState("");
   const [activeMatiere, setActiveMatiere] = useState("");
+  const [activeMatiereAutre, setActiveMatiereAutre] = useState("");
+
+  const villeData = villes.find((v) => v.ville === ville);
 
   useEffect(() => {
     getMatieres().then(setMatieres).catch(() => {});
+    getVilles().then(setVilles).catch(() => {});
   }, []);
 
+  const villeFinale = ville === "Autre" ? villeAutre : ville;
+
+  const matiereAutreId = matieres.find((m) => m.nom === "Autre")?.id;
+  const matiereFinale = matiereFilter === String(matiereAutreId) && matiereAutre ? "" : matiereFilter;
+
   const lancerRecherche = () => {
-    setActiveVille(ville);
-    setActiveMatiere(matiereFilter);
+    setActiveVille(villeFinale);
+    setActiveQuartier(quartier);
+    setActiveMatiere(matiereFinale);
+    setActiveMatiereAutre(matiereFilter === String(matiereAutreId) ? matiereAutre : "");
     setPage(1);
   };
 
   const effacer = () => {
     setVille("");
+    setVilleAutre("");
+    setQuartier("");
     setMatiereFilter("");
+    setMatiereAutre("");
     setActiveVille("");
+    setActiveQuartier("");
     setActiveMatiere("");
+    setActiveMatiereAutre("");
     setPage(1);
   };
 
   const suggerer = (s: typeof SUGGESTIONS[number]) => {
     setVille(s.ville);
+    setVilleAutre("");
+    setQuartier("");
     setMatiereFilter("");
+    setMatiereAutre("");
     setActiveVille(s.ville);
+    setActiveQuartier("");
     setActiveMatiere("");
+    setActiveMatiereAutre("");
     setPage(1);
   };
 
   const fetchEncadreurs = useCallback(
-    async (currentPage: number) => {
-      setLoading(true);
-      setError("");
-      try {
-        const data = await getEncadreurs({
-          ville: activeVille || undefined,
-          matiere: activeMatiere || undefined,
-          page: currentPage,
-        });
+      async (currentPage: number) => {
+        setLoading(true);
+        setError("");
+        try {
+          const data = await getEncadreurs({
+            ville: activeVille || undefined,
+            quartier: activeQuartier || undefined,
+            matiere: activeMatiere || undefined,
+            matiere_nom: activeMatiereAutre || undefined,
+            page: currentPage,
+          });
         setEncadreurs(data.results);
         setTotal(data.count);
         setHasMore(!!data.next);
@@ -82,14 +97,14 @@ export default function EncadreursPage() {
         setLoading(false);
       }
     },
-    [activeVille, activeMatiere],
+    [activeVille, activeQuartier, activeMatiere, activeMatiereAutre],
   );
 
   useEffect(() => {
     fetchEncadreurs(page);
   }, [page, fetchEncadreurs]);
 
-  const aUnFiltre = activeVille || activeMatiere;
+  const aUnFiltre = activeVille || activeQuartier || activeMatiere;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -109,20 +124,59 @@ export default function EncadreursPage() {
                 <option key={m.id} value={m.id}>{m.nom}</option>
               ))}
             </select>
+            {matiereAutreId && matiereFilter === String(matiereAutreId) && (
+              <div className="mt-2">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Précisez la matière</label>
+                <input
+                  type="text"
+                  value={matiereAutre}
+                  onChange={(e) => setMatiereAutre(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Nom de la matière"
+                />
+              </div>
+            )}
           </div>
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Commune</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Ville</label>
             <select
               value={ville}
-              onChange={(e) => setVille(e.target.value)}
+              onChange={(e) => { setVille(e.target.value); setQuartier(""); }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="">Toutes les communes</option>
-              {COMMUNES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              <option value="">Toutes les villes</option>
+              {villes.map((v) => (
+                <option key={v.ville} value={v.ville}>{v.ville}</option>
               ))}
             </select>
+            {ville === "Autre" && (
+              <div className="mt-2">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Précisez la ville</label>
+                <input
+                  type="text" required
+                  value={villeAutre}
+                  onChange={(e) => setVilleAutre(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Nom de votre ville"
+                />
+              </div>
+            )}
           </div>
+          {villeData && villeData.quartiers.length > 0 && (
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Quartier / Commune</label>
+              <select
+                value={quartier}
+                onChange={(e) => setQuartier(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="">Tous les quartiers</option>
+                {villeData.quartiers.map((q) => (
+                  <option key={q} value={q}>{q}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <button
             onClick={lancerRecherche}
             className="bg-orange-500 text-white px-5 py-2 rounded-lg hover:bg-orange-600 transition text-sm font-medium"

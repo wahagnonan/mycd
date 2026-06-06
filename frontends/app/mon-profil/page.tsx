@@ -28,6 +28,7 @@ export default function MonProfilPage() {
   const [typeTarif, setTypeTarif] = useState("mois");
   const [disponible, setDisponible] = useState(true);
   const [selectedMatieres, setSelectedMatieres] = useState<number[]>([]);
+  const [autreMatiere, setAutreMatiere] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -41,6 +42,7 @@ export default function MonProfilPage() {
       setTypeTarif(p.type_tarif || "mois");
       setDisponible(p.disponible);
       setSelectedMatieres(p.matieres.map((m) => m.id));
+      setAutreMatiere(p.autre_matiere || "");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erreur de chargement";
       setError(msg);
@@ -76,6 +78,7 @@ export default function MonProfilPage() {
         type_tarif: typeTarif,
         disponible,
         matiere_ids: selectedMatieres,
+        autre_matiere: autreMatiere,
       } as any);
       setMessage("Profil mis à jour avec succès");
     } catch (err: any) {
@@ -179,6 +182,22 @@ export default function MonProfilPage() {
               </button>
             ))}
           </div>
+          {selectedMatieres.includes(
+            matieres.find((m) => m.nom === "Autre")?.id ?? -1,
+          ) && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Précisez la/les matière(s)
+              </label>
+              <input
+                type="text"
+                value={autreMatiere}
+                onChange={(e) => setAutreMatiere(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Ex: Arabe, Programmation, Danse..."
+              />
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">

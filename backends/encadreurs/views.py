@@ -46,6 +46,9 @@ class EncadreurListView(generics.ListAPIView):
         matiere = self.request.query_params.get("matiere")
         if matiere:
             qs = qs.filter(matieres__id=matiere)
+        matiere_nom = self.request.query_params.get("matiere_nom")
+        if matiere_nom:
+            qs = qs.filter(autre_matiere__icontains=matiere_nom)
 
         note_min = self.request.query_params.get("note_min")
         if note_min:

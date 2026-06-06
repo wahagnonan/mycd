@@ -36,7 +36,7 @@ class ProfilEncadreurSerializer(serializers.ModelSerializer):
             "disponible", "verified", "note_moyenne", "nombre_avis", "date_inscription",
             "accepte_deplacement", "niveau_etudes", "niveaux_enseignement",
             "experience_cours", "jours_disponibles", "creneaux_preferes",
-            "cgu_acceptees", "questionnaire_rempli",
+            "cgu_acceptees", "questionnaire_rempli", "autre_matiere",
             "debloque",
         )
         read_only_fields = (

@@ -56,7 +56,7 @@ LOGGING = {
         "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
     },
     "loggers": {
-        "backends.middleware": {
+        "backends.backends.middleware": {
             "handlers": ["console"],
             "level": "WARNING",
             "propagate": False,
@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    "backends.core",
     "backends.accounts",
     "backends.encadreurs",
     "backends.messagerie",
@@ -95,7 +96,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "corsheaders.middleware.CorsMiddleware",
-    "backends.middleware.SecurityLoggingMiddleware",
+    "backends.backends.middleware.SecurityLoggingMiddleware",
 ]
 
 ROOT_URLCONF = 'backends.backends.urls'

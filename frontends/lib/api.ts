@@ -150,23 +150,21 @@ export async function register(data: {
   ville?: string;
   quartier?: string;
 }) {
+  const body = {
+    ...data,
+    phone: data.phone.startsWith("+225") ? data.phone : `+225${data.phone}`,
+  };
   const res = await fetch(`${API_URL}/auth/register/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(
-      err.email?.[0]
-        || err.phone?.[0]
-        || err.password?.[0]
-        || err.password2?.[0]
-        || err.role?.[0]
-        || err.non_field_errors?.[0]
-        || err.detail
-        || "Erreur lors de l'inscription",
-    );
+    const message = (
+      Object.values(err).flat() as string[]
+    ).find(Boolean) || "Erreur lors de l'inscription";
+    throw new Error(message);
   }
   const json = await res.json();
   setTokens(json.access, json.refresh);
@@ -218,6 +216,7 @@ export interface ProfilEncadreur {
   nombre_avis: number;
   date_inscription: string;
   debloque: boolean;
+  autre_matiere: string;
 
   // Questionnaire post-inscription
   accepte_deplacement: boolean;
@@ -244,6 +243,7 @@ export interface PaginatedResponse<T> {
 
 export async function getEncadreurs(params?: {
   ville?: string; quartier?: string; matiere?: string;
+  matiere_nom?: string;
   page?: number; search?: string; note_min?: number;
   niveau_etudes?: string; niveaux_enseignement?: string[];
   jours_disponibles?: string[]; tarif_max_mois?: number;
@@ -253,6 +253,7 @@ export async function getEncadreurs(params?: {
   if (params?.ville) qs.set("ville", params.ville);
   if (params?.quartier) qs.set("quartier", params.quartier);
   if (params?.matiere) qs.set("matiere", params.matiere);
+  if (params?.matiere_nom) qs.set("matiere_nom", params.matiere_nom);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.search) qs.set("search", params.search);
   if (params?.note_min) qs.set("note_min", String(params.note_min));
@@ -279,6 +280,15 @@ export async function updateMonProfil(data: Partial<ProfilEncadreur>): Promise<P
     method: "PATCH",
     body: JSON.stringify(data),
   });
+}
+
+export interface VilleData {
+  ville: string;
+  quartiers: string[];
+}
+
+export async function getVilles(): Promise<VilleData[]> {
+  return apiFetch<VilleData[]>("/villes/");
 }
 
 export async function getMatieres(): Promise<Matiere[]> {

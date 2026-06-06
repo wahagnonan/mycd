@@ -1,166 +1,170 @@
 [
   {
     "ville": "Abidjan",
-    "communes": ["Abobo", "Adjamé", "Attécoubé", "Cocody", "Koumassi", "Marcory", "Plateau", "Port-Bouët", "Treichville", "Yopougon", "Bingerville", "Anyama"]
+    "quartiers": ["Abobo", "Adjamé", "Attécoubé", "Cocody", "Koumassi", "Marcory", "Plateau", "Port-Bouët", "Treichville", "Yopougon", "Bingerville", "Anyama"]
   },
   {
     "ville": "Bouaké",
-    "communes": ["Bouaké"]
+    "quartiers": ["Air France", "Kennedy", "Nimbo", "Gonfreville", "Dar-es-Salam", "Commerce", "Broukro", "N'Gattakro", "Maroc", "Zone", "Houphouetville", "Gnankoukro", "Tolla-Kouadiokro", "Sokoura", "Tièlèkro", "Ahougnassou", "Odiennékourani", "Habitat La Caisse", "Belleville", "Beaufort", "Corridor Sud", "Corridor Nord", "Dougouba", "Liberté", "Koko", "Zone Industrielle", "Niankoukro", "Aéroport", "Camp Militaire"]
   },
   {
     "ville": "Korhogo",
-    "communes": ["Korhogo"]
+    "quartiers": ["Koko", "Soba", "Petit Paris", "Lataha", "Natiokobadara"]
   },
   {
     "ville": "Yamoussoukro",
-    "communes": ["Yamoussoukro"]
+    "quartiers": ["Assabou", "Habitat", "Dioulakro", "Kokrenou", "Morofe", "N'Zuessy", "220 Logements", "Énergie", "Sopim", "Belleville", "Millionnaire", "Nanan", "Quartier Thérèse", "Sinzibo", "Cabinebo", "Kpagbassou", "Makora", "Riviera", "Mofaitai", "80 Logements"]
   },
   {
     "ville": "San-Pédro",
-    "communes": ["San-Pédro"]
+    "quartiers": ["Balmer", "Bardot", "Séwéké", "Ombloké", "Le Bardo", "La Cité", "Grand Domaine", "Gabiadji", "Cité Ivosep", "Brazzaville", "Boubré", "Bliéron", "Bledié", "Baba", "Anamoué", "Akafoukro"]
   },
   {
     "ville": "Gagnoa",
-    "communes": ["Gagnoa"]
+    "quartiers": ["Dioulabougou", "Odiennekourani", "Sokoura", "Sokouradjan", "Dar-es-Salam", "Libreville", "Zapata", "Cocoville", "Soleil", "Commerce", "Résidentiel", "Baoulébougou", "Saint George", "Millionnaire", "Barouhio"]
   },
   {
     "ville": "Man",
-    "communes": ["Man"]
+    "quartiers": ["Quartier Administratif", "Quartier France", "Commerce", "Kennedy", "Gbêpleu", "Quartier des Ambassades"]
   },
   {
     "ville": "Daloa",
-    "communes": ["Daloa"]
+    "quartiers": ["Loabia", "Gbeuliville", "Tazibouo", "Piscine", "Lobia", "Orly", "Kennedy", "Gagnoa", "Man"]
   },
   {
     "ville": "Abengourou",
-    "communes": ["Abengourou"]
+    "quartiers": ["Plateau", "Zaranou", "Aniassué", "Amélékia", "Niablé", "Ebilassokro"]
   },
   {
     "ville": "Aboisso",
-    "communes": ["Aboisso"]
+    "quartiers": ["Aboisso", "Ayamé", "Krinjabo", "Adaou", "Adjouan", "Bianouan"]
   },
   {
     "ville": "Adiaké",
-    "communes": ["Adiaké"]
+    "quartiers": ["Adiaké", "Assinie", "Etuéboué", "Assouindé"]
   },
   {
     "ville": "Adzopé",
-    "communes": ["Adzopé"]
+    "quartiers": ["Adzopé"]
   },
   {
     "ville": "Agboville",
-    "communes": ["Agboville"]
+    "quartiers": ["Agboville"]
   },
   {
     "ville": "Bondoukou",
-    "communes": ["Bondoukou"]
+    "quartiers": ["Sogobo", "Résidence Présidentielle", "Koutouni", "Gbokori", "Assouangui", "Abema", "Yamadougou", "Wélékin", "Tissié", "Songori", "Soko", "Séréoudé", "Sabi", "Kouassi-N'dawa"]
   },
   {
     "ville": "Bongouanou",
-    "communes": ["Bongouanou"]
+    "quartiers": ["Bongouanou"]
   },
   {
     "ville": "Bouaflé",
-    "communes": ["Bouaflé"]
+    "quartiers": ["Administratif", "Agbanou", "Bellou", "Biaka", "Blama", "Dehita Village", "Dehita Espoir", "Dehita Résidentiel", "Dioulabougou", "Hermankono", "Koblata", "Koko", "Lopouafla", "Lotanzia", "Mangorota", "Marahoué", "Moya", "N'Gattakro", "Port-Bouet", "Résidentiel Est", "Résidentiel Ouest", "Solibra", "Vahou"]
   },
   {
     "ville": "Boundiali",
-    "communes": ["Boundiali"]
+    "quartiers": ["Boundiali"]
   },
   {
     "ville": "Dabou",
-    "communes": ["Dabou"]
+    "quartiers": ["Dabou"]
   },
   {
     "ville": "Daoukro",
-    "communes": ["Daoukro"]
+    "quartiers": ["Daoukro"]
   },
   {
     "ville": "Dimbokro",
-    "communes": ["Dimbokro"]
+    "quartiers": ["Belleville", "Cité Sogephia", "Dioulakro"]
   },
   {
     "ville": "Divo",
-    "communes": ["Divo"]
+    "quartiers": ["Dioulabougou", "Jérusalem", "Konankro", "Bada", "Boudoukou", "Dougako", "Briboré", "Grémian", "Libanais", "Plateau", "Résidentiel RTI", "Dialogue", "Odroukou", "Spadi", "Badalegbreville", "Libreville"]
   },
   {
     "ville": "Duékoué",
-    "communes": ["Duékoué"]
+    "quartiers": ["Carrefour", "Kôkôma", "Latif", "Petit Duékoué", "Quartier Guéré", "Toguéhi", "Artisanal", "Père-Thète"]
   },
   {
     "ville": "Ferkessédougou",
-    "communes": ["Ferkessédougou"]
+    "quartiers": ["Ferkessédougou"]
   },
   {
     "ville": "Grand-Bassam",
-    "communes": ["Grand-Bassam"]
+    "quartiers": ["Quartier France", "Mockeyville", "Petit Paris", "Quartier Phare", "Moossou", "Azuretti", "Modeste"]
   },
   {
     "ville": "Guiglo",
-    "communes": ["Guiglo"]
+    "quartiers": ["Guiglo"]
   },
   {
     "ville": "Issia",
-    "communes": ["Issia"]
+    "quartiers": ["Issia"]
   },
   {
     "ville": "Jacqueville",
-    "communes": ["Jacqueville"]
+    "quartiers": ["Jacqueville"]
   },
   {
     "ville": "Katiola",
-    "communes": ["Katiola"]
+    "quartiers": ["Katiola"]
   },
   {
     "ville": "Lakota",
-    "communes": ["Lakota"]
+    "quartiers": ["Lakota"]
   },
   {
     "ville": "Mankono",
-    "communes": ["Mankono"]
+    "quartiers": ["Mankono"]
   },
   {
     "ville": "Odienné",
-    "communes": ["Odienné"]
+    "quartiers": ["Odienné"]
   },
   {
     "ville": "Oumé",
-    "communes": ["Oumé"]
+    "quartiers": ["Oumé"]
   },
   {
     "ville": "Sassandra",
-    "communes": ["Sassandra"]
+    "quartiers": ["Sassandra"]
   },
   {
     "ville": "Séguéla",
-    "communes": ["Séguéla"]
+    "quartiers": ["Séguéla"]
   },
   {
     "ville": "Sinfra",
-    "communes": ["Sinfra"]
+    "quartiers": ["Sinfra"]
   },
   {
     "ville": "Soubré",
-    "communes": ["Soubré"]
+    "quartiers": ["Soubré"]
   },
   {
     "ville": "Tiassalé",
-    "communes": ["Tiassalé"]
+    "quartiers": ["Tiassalé"]
   },
   {
     "ville": "Touba",
-    "communes": ["Touba"]
+    "quartiers": ["Touba"]
   },
   {
     "ville": "Toumodi",
-    "communes": ["Toumodi"]
+    "quartiers": ["Toumodi"]
   },
   {
     "ville": "Vavoua",
-    "communes": ["Vavoua"]
+    "quartiers": ["Vavoua"]
   },
   {
     "ville": "Zuénoula",
-    "communes": ["Zuénoula"]
+    "quartiers": ["Zuénoula"]
+  },
+  {
+    "ville": "Autre",
+    "quartiers": []
   }
 ]

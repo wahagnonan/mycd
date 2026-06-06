@@ -14,6 +14,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self._load_matieres()
+        self._check_communes()
         self.stdout.write(self.style.SUCCESS("Données de seed chargées avec succès."))
 
     @transaction.atomic
@@ -33,3 +34,14 @@ class Command(BaseCommand):
                 created += 1
 
         self.stdout.write(f"  Matières : {created} créée(s), {Matiere.objects.count()} totale(s)")
+
+    def _check_communes(self):
+        path = self.DATA_DIR / "communes.json"
+        if not path.exists():
+            self.stdout.write(self.style.WARNING(f"Fichier {path} introuvable. Ignoré."))
+            return
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        nb_villes = len(data)
+        nb_quartiers = sum(len(item.get("quartiers", [])) for item in data)
+        self.stdout.write(f"  Communes : {nb_villes} villes, {nb_quartiers} quartiers")
