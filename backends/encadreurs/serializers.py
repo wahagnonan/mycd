@@ -30,7 +30,7 @@ class ProfilEncadreurSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProfilEncadreur
         fields = (
-            "id", "user_id", "email", "phone", "nom", "bio", "ville", "quartier",
+            "id", "user_id", "email", "phone", "photo", "nom", "bio", "ville", "quartier",
             "matieres", "matiere_ids",
             "tarif_mois", "tarif_horaire", "type_tarif",
             "disponible", "verified", "note_moyenne", "nombre_avis", "date_inscription",

@@ -145,10 +145,23 @@ export default function EncadreurDetailPage({
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-8 text-white">
               <div className="flex items-start justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold">{profil.nom}</h1>
-                  <p className="text-orange-100 mt-1">{profil.email}</p>
-                  <p className="text-orange-100">{profil.phone}</p>
+                <div className="flex items-start gap-4">
+                  {profil.photo ? (
+                    <img
+                      src={profil.photo}
+                      alt={profil.nom}
+                      className="w-20 h-20 rounded-full object-cover border-2 border-white/50"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold text-white/80">
+                      {profil.nom.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <h1 className="text-3xl font-bold">{profil.nom}</h1>
+                    <p className="text-orange-100 mt-1">{profil.email}</p>
+                    <p className="text-orange-100">{profil.phone}</p>
+                  </div>
                 </div>
                 {profil.verified && (
                   <span className="bg-white/20 text-white text-sm px-3 py-1 rounded-full flex items-center gap-1">

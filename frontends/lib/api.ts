@@ -214,6 +214,7 @@ export interface ProfilEncadreur {
   verified: boolean;
   note_moyenne: number;
   nombre_avis: number;
+  photo: string | null;
   date_inscription: string;
   debloque: boolean;
   autre_matiere: string;

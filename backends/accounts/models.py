@@ -42,6 +42,7 @@ class User(AbstractUser):
     ville = models.CharField(max_length=100, blank=True, default="")
     quartier = models.CharField(max_length=100, blank=True, default="")
 
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["phone"]
 
