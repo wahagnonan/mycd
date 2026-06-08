@@ -11,24 +11,51 @@ class MatiereSerializer(serializers.ModelSerializer):
         fields = ("id", "nom")
 
 
-class ProfilEncadreurSerializer(serializers.ModelSerializer):
+class ProfilEncadreurPublicSerializer(serializers.ModelSerializer):
     matieres = MatiereSerializer(many=True, read_only=True)
-    matiere_ids = serializers.ListField(
-        child=serializers.IntegerField(), write_only=True, required=False
-    )
-    email = serializers.EmailField(source="user.email", read_only=True)
-    phone = serializers.CharField(source="user.phone", read_only=True)
     ville = serializers.CharField(source="user.ville", read_only=True)
     quartier = serializers.CharField(source="user.quartier", read_only=True)
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     nom = serializers.SerializerMethodField()
     debloque = serializers.SerializerMethodField()
 
+    class Meta:
+        model = ProfilEncadreur
+        fields = (
+            "id", "user_id", "nom", "bio", "ville", "quartier",
+            "matieres",
+            "tarif_mois", "tarif_horaire", "type_tarif",
+            "disponible", "verified", "note_moyenne", "nombre_avis", "date_inscription",
+            "autre_matiere", "debloque",
+        )
+        read_only_fields = (
+            "id", "verified", "note_moyenne", "date_inscription",
+        )
+
+    def get_nom(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or "Encadreur"
+
+    def get_debloque(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.role == User.Role.PARENT:
+            debloque_ids = self.context.get("debloque_ids")
+            if debloque_ids is not None:
+                return obj.id in debloque_ids
+            return a_debloque_encadreur(request.user, obj)
+        return False
+
+
+class ProfilEncadreurSerializer(ProfilEncadreurPublicSerializer):
+    email = serializers.EmailField(source="user.email", read_only=True)
+    phone = serializers.CharField(source="user.phone", read_only=True)
+
+    matiere_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
     cgu_acceptees = serializers.BooleanField(write_only=True, required=False)
     accepte_deplacement = serializers.BooleanField(write_only=True, required=False)
 
-    class Meta:
-        model = ProfilEncadreur
+    class Meta(ProfilEncadreurPublicSerializer.Meta):
         fields = (
             "id", "user_id", "email", "phone", "nom", "bio", "ville", "quartier",
             "matieres", "matiere_ids",
@@ -43,15 +70,6 @@ class ProfilEncadreurSerializer(serializers.ModelSerializer):
             "id", "verified", "note_moyenne", "date_inscription",
             "questionnaire_rempli",
         )
-
-    def get_nom(self, obj):
-        return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.email
-
-    def get_debloque(self, obj):
-        request = self.context.get("request")
-        if request and request.user.is_authenticated and request.user.role == User.Role.PARENT:
-            return a_debloque_encadreur(request.user, obj)
-        return False
 
     def validate_tarif_mois(self, value):
         if value is not None and value < 0:

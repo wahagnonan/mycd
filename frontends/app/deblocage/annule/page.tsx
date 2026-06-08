@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function AnnulePage() {
-  let encadreurId: string | null = null;
-  if (typeof window !== "undefined") {
-    encadreurId = sessionStorage.getItem("credit_encadreur_id");
+  const [encadreurId, setEncadreurId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = sessionStorage.getItem("credit_encadreur_id");
     sessionStorage.removeItem("credit_encadreur_id");
-  }
+    setEncadreurId(id);
+  }, []);
 
   const retryUrl = encadreurId ? `/encadreurs/${encadreurId}` : "/encadreurs";
 

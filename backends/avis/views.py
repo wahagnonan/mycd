@@ -31,7 +31,6 @@ class AvisCreateView(generics.CreateAPIView):
 class AvisByEncadreurView(generics.ListAPIView):
     serializer_class = AvisSerializer
     permission_classes = (permissions.AllowAny,)
-    pagination_class = None
 
     def get_queryset(self):
         return Avis.objects.filter(

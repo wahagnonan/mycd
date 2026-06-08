@@ -1,7 +1,7 @@
 import logging
 
 from django.contrib.auth import authenticate
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 class LoginThrottle(AnonRateThrottle):
     scope = "login"
+
+
+class RegisterThrottle(AnonRateThrottle):
+    scope = "register"
 
 
 class RefreshThrottle(AnonRateThrottle):
@@ -44,12 +48,13 @@ def api_root(request):
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = [RegisterThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
-        except Exception:
+        except serializers.ValidationError:
             logger.warning(
                 "REGISTER_FAILED | IP=%s | Data=%s | Errors=%s",
                 request.META.get("REMOTE_ADDR"),

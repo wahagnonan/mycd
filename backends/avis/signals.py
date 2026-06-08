@@ -3,6 +3,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from backends.avis.models import Avis
+from backends.notifications.models import Notification
 
 
 def _recalculer_notes(encadreur):
@@ -15,7 +16,15 @@ def _recalculer_notes(encadreur):
 
 
 @receiver(post_save, sender=Avis)
-def avis_post_save(sender, instance, **kwargs):
+def avis_post_save(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(
+            user=instance.encadreur.user,
+            type=Notification.Type.NEW_REVIEW,
+            title=f"Nouvel avis de {instance.parent.email}",
+            message=f"Note : {instance.note}/5" + (f" — {instance.commentaire[:100]}" if instance.commentaire else ""),
+            link=f"/encadreurs/{instance.encadreur.id}",
+        )
     _recalculer_notes(instance.encadreur)
 
 

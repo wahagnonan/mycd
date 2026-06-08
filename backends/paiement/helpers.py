@@ -8,8 +8,14 @@ def get_credits_restants(parent):
         parent=parent, statut=CreditAchat.Statut.COMPLETE
     ).aggregate(total=models.Sum("credits_achetes"))["total"] or 0
     total_utilises = CreditUtilisation.objects.filter(parent=parent).count()
-    return total_achetes - total_utilises
+    return max(0, total_achetes - total_utilises)
 
 
 def a_debloque_encadreur(parent, encadreur):
     return CreditUtilisation.objects.filter(parent=parent, encadreur=encadreur).exists()
+
+
+def get_debloque_ids(parent):
+    return set(
+        CreditUtilisation.objects.filter(parent=parent).values_list("encadreur_id", flat=True)
+    )

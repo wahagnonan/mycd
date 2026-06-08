@@ -8,6 +8,7 @@ import {
   getMonProfil,
   Matiere,
   ProfilEncadreur,
+  ProfilEncadreurUpdate,
   updateMonProfil,
 } from "@/lib/api";
 import QuestionnaireEncadreur from "@/components/QuestionnaireEncadreur";
@@ -71,7 +72,7 @@ export default function MonProfilPage() {
     setSaving(true);
     setMessage("");
     try {
-      await updateMonProfil({
+      const data: ProfilEncadreurUpdate = {
         bio,
         tarif_mois: tarifMois ? Number(tarifMois) : null,
         tarif_horaire: tarifHoraire ? Number(tarifHoraire) : null,
@@ -79,7 +80,8 @@ export default function MonProfilPage() {
         disponible,
         matiere_ids: selectedMatieres,
         autre_matiere: autreMatiere,
-      } as any);
+      };
+      await updateMonProfil(data);
       setMessage("Profil mis à jour avec succès");
     } catch (err: any) {
       setMessage(err.message || "Erreur lors de la mise à jour");

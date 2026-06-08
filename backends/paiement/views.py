@@ -1,8 +1,13 @@
+import hmac
 import hashlib
+import json
 import logging
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
+from django.http import Http404
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -90,73 +95,74 @@ class InitierPaiementView(generics.GenericAPIView):
             )
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PaiementCallbackView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request):
-        data = request.POST.get("data")
-        if not data:
-            return Response({"detail": "Données manquantes"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            import json
-            data = json.loads(data) if isinstance(data, str) else data
-        except (json.JSONDecodeError, TypeError):
-            return Response({"detail": "Données invalides"}, status=status.HTTP_400_BAD_REQUEST)
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            return Response({"detail": "Données JSON invalides"}, status=status.HTTP_400_BAD_REQUEST)
+
+        received_hash = body.pop("hash", "")
+        raw_data = json.dumps(body, separators=(",", ":"))
 
         master_key = settings.PAYDUNYA["MASTER_KEY"]
-        expected_hash = hashlib.sha512(master_key.encode()).hexdigest()
-        received_hash = data.get("hash", "")
+        expected_hash = hmac.new(
+            master_key.encode(), raw_data.encode(), hashlib.sha256
+        ).hexdigest()
 
-        if received_hash != expected_hash:
+        if not hmac.compare_digest(received_hash, expected_hash):
             logger.warning("PAIEMENT_CALLBACK_HASH_INVALIDE | hash=%s", received_hash)
             return Response({"detail": "Hash invalide"}, status=status.HTTP_403_FORBIDDEN)
 
-        statut = data.get("status")
-        token = data.get("invoice", {}).get("token", "")
-        receipt_url = data.get("receipt_url", "")
+        status_pay = body.get("status")
+        token = body.get("invoice", {}).get("token", "")
+        receipt_url = body.get("receipt_url", "")
 
-        if statut == "completed":
-            updated = Paiement.objects.filter(
-                token_paydunya=token, statut=Paiement.Statut.EN_ATTENTE
-            ).update(
-                statut=Paiement.Statut.COMPLETE,
-                receipt_url=receipt_url,
-            )
-            if updated:
-                paiement = Paiement.objects.get(token_paydunya=token)
-                Notification.objects.create(
-                    user=paiement.encadreur.user,
-                    type=Notification.Type.PAYMENT_RECEIVED,
-                    title=f"Paiement reçu de {paiement.parent.email}",
-                    message=f"{paiement.montant} FCFA — {paiement.description[:100]}",
-                    link="/messagerie",
-                )
-                logger.info(
-                    "PAIEMENT_COMPLETE | token=%s | montant=%d",
-                    token, paiement.montant,
-                )
-            else:
-                updated = CreditAchat.objects.filter(
-                    token_paydunya=token, statut=CreditAchat.Statut.EN_ATTENTE
+        if status_pay == "completed":
+            with transaction.atomic():
+                updated = Paiement.objects.filter(
+                    token_paydunya=token, statut=Paiement.Statut.EN_ATTENTE
                 ).update(
-                    statut=CreditAchat.Statut.COMPLETE,
+                    statut=Paiement.Statut.COMPLETE,
                     receipt_url=receipt_url,
                 )
                 if updated:
-                    credit_achat = CreditAchat.objects.get(token_paydunya=token)
+                    paiement = Paiement.objects.get(token_paydunya=token)
                     Notification.objects.create(
-                        user=credit_achat.parent,
+                        user=paiement.encadreur.user,
                         type=Notification.Type.PAYMENT_RECEIVED,
-                        title="Achat de crédits réussi",
-                        message=f"Vous avez acheté {credit_achat.credits_achetes} crédits de contact.",
-                        link="/encadreurs",
+                        title=f"Paiement reçu de {paiement.parent.email}",
+                        message=f"{paiement.montant} FCFA — {paiement.description[:100]}",
+                        link="/messagerie",
                     )
                     logger.info(
-                        "CREDIT_ACHAT_COMPLETE | id=%d | token=%s | credits=%d",
-                        credit_achat.id, token, credit_achat.credits_achetes,
+                        "PAIEMENT_COMPLETE | token=%s | montant=%d",
+                        token, paiement.montant,
                     )
-        elif statut == "canceled":
+                else:
+                    updated = CreditAchat.objects.filter(
+                        token_paydunya=token, statut=CreditAchat.Statut.EN_ATTENTE
+                    ).update(
+                        statut=CreditAchat.Statut.COMPLETE,
+                        receipt_url=receipt_url,
+                    )
+                    if updated:
+                        credit_achat = CreditAchat.objects.get(token_paydunya=token)
+                        Notification.objects.create(
+                            user=credit_achat.parent,
+                            type=Notification.Type.PAYMENT_RECEIVED,
+                            title="Achat de crédits réussi",
+                            message=f"Vous avez acheté {credit_achat.credits_achetes} crédits de contact.",
+                            link="/encadreurs",
+                        )
+                        logger.info(
+                            "CREDIT_ACHAT_COMPLETE | id=%d | token=%s | credits=%d",
+                            credit_achat.id, token, credit_achat.credits_achetes,
+                        )
+        elif status_pay == "canceled":
             paiement_updated = Paiement.objects.filter(
                 token_paydunya=token, statut=Paiement.Statut.EN_ATTENTE
             ).update(statut=Paiement.Statut.ECHOUE)
@@ -201,7 +207,6 @@ class VerifierPaiementView(APIView):
 class HistoriquePaiementsView(generics.ListAPIView):
     serializer_class = PaiementSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -219,7 +224,7 @@ class CreditStatusView(APIView):
             parent=parent, statut=CreditAchat.Statut.COMPLETE
         ).aggregate(total=models.Sum("credits_achetes"))["total"] or 0
         total_utilises = CreditUtilisation.objects.filter(parent=parent).count()
-        credits_restants = total_achetes - total_utilises
+        credits_restants = max(0, total_achetes - total_utilises)
         debloque_ids = list(
             CreditUtilisation.objects.filter(parent=parent).values_list("encadreur_id", flat=True)
         )
@@ -306,22 +311,43 @@ class DebloquerEncadreurView(APIView):
                 "credit_consomme": False,
             })
 
-        if get_credits_restants(request.user) <= 0:
-            return Response(
-                {"detail": "Crédits insuffisants. Achetez des crédits pour contacter cet encadreur.",
-                 "code": "credits_insuffisants"},
-                status=status.HTTP_402_PAYMENT_REQUIRED,
+        with transaction.atomic():
+            unlocked_before = CreditUtilisation.objects.filter(
+                parent=request.user, encadreur=encadreur_profil
+            ).exists()
+            if unlocked_before:
+                conversation, _ = Conversation.objects.get_or_create(
+                    parent=request.user,
+                    encadreur=encadreur_profil.user,
+                )
+                return Response({
+                    "conversation_id": conversation.id,
+                    "credit_consomme": False,
+                })
+
+            credit_achats = list(
+                CreditAchat.objects.filter(
+                    parent=request.user, statut=CreditAchat.Statut.COMPLETE
+                ).select_for_update()
+            )
+            total_achetes = sum(ca.credits_achetes for ca in credit_achats)
+            total_utilises = CreditUtilisation.objects.filter(parent=request.user).count()
+            if total_achetes - total_utilises <= 0:
+                return Response(
+                    {"detail": "Crédits insuffisants. Achetez des crédits pour contacter cet encadreur.",
+                     "code": "credits_insuffisants"},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
+
+            CreditUtilisation.objects.create(
+                parent=request.user,
+                encadreur=encadreur_profil,
             )
 
-        CreditUtilisation.objects.create(
-            parent=request.user,
-            encadreur=encadreur_profil,
-        )
-
-        conversation, _ = Conversation.objects.get_or_create(
-            parent=request.user,
-            encadreur=encadreur_profil.user,
-        )
+            conversation, _ = Conversation.objects.get_or_create(
+                parent=request.user,
+                encadreur=encadreur_profil.user,
+            )
 
         Notification.objects.create(
             user=encadreur_profil.user,

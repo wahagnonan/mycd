@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateMonProfil } from "@/lib/api";
+import { ProfilEncadreurUpdate, updateMonProfil } from "@/lib/api";
 
 const NIVEAU_ETUDES_OPTIONS = [
   { value: "bac_en_cours", label: "BAC en cours" },
@@ -103,7 +103,7 @@ export default function QuestionnaireEncadreur({
 
     setSaving(true);
     try {
-      await updateMonProfil({
+      const data: ProfilEncadreurUpdate = {
         niveau_etudes: champs.niveau_etudes,
         niveaux_enseignement: champs.niveaux_enseignement,
         experience_cours: champs.experience_cours,
@@ -111,7 +111,8 @@ export default function QuestionnaireEncadreur({
         creneaux_preferes: champs.creneaux_preferes,
         accepte_deplacement: champs.accepte_deplacement,
         cgu_acceptees: champs.cgu_acceptees,
-      } as any);
+      };
+      await updateMonProfil(data);
       onComplete();
     } catch (err: unknown) {
       const msg =

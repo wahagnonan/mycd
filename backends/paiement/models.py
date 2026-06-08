@@ -86,3 +86,8 @@ class CreditUtilisation(models.Model):
 
     def __str__(self):
         return f"Crédit utilisé: {self.parent.email} → {self.encadreur.user.email}"
+
+
+# Nouveaux alias métier (pointent vers les mêmes modèles)
+CreditPurchase = CreditAchat
+ContactUnlock = CreditUtilisation

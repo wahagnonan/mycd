@@ -1,20 +1,22 @@
-import os
 from datetime import timedelta
 from pathlib import Path
 
+from decouple import Csv, Config, RepositoryEnv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+config = Config(RepositoryEnv(BASE_DIR / ".env"))
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-6x+rmr_#4i&1nbh)aqeqok%=6@l8uxvr(&exjwtte9+65v^-4*")
+SECRET_KEY = config("DJANGO_SECRET_KEY")
+assert SECRET_KEY, "DJANGO_SECRET_KEY must be set in .env"
+assert SECRET_KEY != "django-insecure-6x+rmr_#4i&1nbh)aqeqok%=6@l8uxvr(&exjwtte9+65v^-4*", "Change the default DJANGO_SECRET_KEY"
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
 # ---- Sécurité renforcée ----
 
-CSRF_TRUSTED_ORIGINS = os.environ.get(
-    "CSRF_TRUSTED_ORIGINS", "http://localhost:3000"
-).split(",")
+CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", default="http://localhost:3000", cast=Csv())
 
 # Session cookie : jamais accessible en JS, flags SameSite
 SESSION_COOKIE_HTTPONLY = True
@@ -25,7 +27,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # Headers de sécurité
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_REFERRER_POLICY = "same-origin"
-SECURE_BROWSER_XSS_FILTER = True
+# SECURE_BROWSER_XSS_FILTER is deprecated since Django 5.x and removed in 6.x
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 
@@ -53,7 +55,7 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console"],
-        "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+        "level": config("DJANGO_LOG_LEVEL", default="INFO"),
     },
     "loggers": {
         "backends.backends.middleware": {
@@ -88,6 +90,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -95,7 +98,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "corsheaders.middleware.CorsMiddleware",
     "backends.backends.middleware.SecurityLoggingMiddleware",
 ]
 
@@ -182,6 +184,7 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
     "DEFAULT_THROTTLE_RATES": {
         "login": "5/minute",
+        "register": "3/minute",
         "mon-profil": "60/minute",
         "mon-profil-patch": "10/minute",
         "refresh": "5/minute",
@@ -200,28 +203,17 @@ SIMPLE_JWT = {
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000"
-).split(",")
+CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:3000", cast=Csv())
 
 # PayDunya
 PAYDUNYA = {
-    "MASTER_KEY": os.environ["PAYDUNYA_MASTER_KEY"],
-    "PRIVATE_KEY": os.environ["PAYDUNYA_PRIVATE_KEY"],
-    "TOKEN": os.environ["PAYDUNYA_TOKEN"],
-    "MODE": os.environ.get("PAYDUNYA_MODE", "test"),
+    "MASTER_KEY": config("PAYDUNYA_MASTER_KEY"),
+    "PRIVATE_KEY": config("PAYDUNYA_PRIVATE_KEY"),
+    "TOKEN": config("PAYDUNYA_TOKEN"),
+    "MODE": config("PAYDUNYA_MODE", default="test"),
     "STORE_NAME": "MYCD",
     "STORE_TAGLINE": "Mise en relation parents-encadreurs",
-    "CALLBACK_URL": os.environ.get(
-        "PAYDUNYA_CALLBACK_URL",
-        "http://localhost:8000/api/paiement/callback/",
-    ),
-    "RETURN_URL": os.environ.get(
-        "PAYDUNYA_RETURN_URL",
-        "http://localhost:3000/deblocage/succes",
-    ),
-    "CANCEL_URL": os.environ.get(
-        "PAYDUNYA_CANCEL_URL",
-        "http://localhost:3000/deblocage/annule",
-    ),
+    "CALLBACK_URL": config("PAYDUNYA_CALLBACK_URL", default="http://localhost:8000/api/paiement/callback/"),
+    "RETURN_URL": config("PAYDUNYA_RETURN_URL", default="http://localhost:3000/deblocage/succes"),
+    "CANCEL_URL": config("PAYDUNYA_CANCEL_URL", default="http://localhost:3000/deblocage/annule"),
 }

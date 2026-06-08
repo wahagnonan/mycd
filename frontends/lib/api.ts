@@ -78,9 +78,9 @@ export async function apiFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const tokens = getTokens();
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...options.headers,
+    ...(options.headers as Record<string, string> | undefined),
   };
 
   // Si le token access est déjà expiré, tenter un refresh avant l'appel
@@ -88,13 +88,13 @@ export async function apiFetch<T>(
     const newAccess = await refreshAccessToken(tokens.refresh);
     if (newAccess) {
       tokens.access = newAccess;
-      (headers as Record<string, string>)["Authorization"] = `Bearer ${newAccess}`;
+      headers["Authorization"] = `Bearer ${newAccess}`;
     } else {
       clearTokens();
       throw new AuthError("Session expirée", true);
     }
   } else if (tokens) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${tokens.access}`;
+    headers["Authorization"] = `Bearer ${tokens.access}`;
   }
 
   let res = await fetch(`${API_URL}${endpoint}`, { ...options, headers }).catch(() => {
@@ -105,7 +105,7 @@ export async function apiFetch<T>(
   if (res.status === 401 && tokens?.refresh && !refreshPromise) {
     const newAccess = await refreshAccessToken(tokens.refresh);
     if (newAccess) {
-      (headers as Record<string, string>)["Authorization"] = `Bearer ${newAccess}`;
+      headers["Authorization"] = `Bearer ${newAccess}`;
       res = await fetch(`${API_URL}${endpoint}`, { ...options, headers }).catch(() => {
         throw new Error("Erreur réseau — vérifiez votre connexion");
       });
@@ -197,11 +197,9 @@ export async function getMe() {
   }>("/auth/me/");
 }
 
-export interface ProfilEncadreur {
+export interface ProfilEncadreurPublic {
   id: number;
   user_id: number;
-  email: string;
-  phone: string;
   nom: string;
   bio: string;
   ville: string;
@@ -217,16 +215,21 @@ export interface ProfilEncadreur {
   date_inscription: string;
   debloque: boolean;
   autre_matiere: string;
+}
+
+export interface ProfilEncadreur extends ProfilEncadreurPublic {
+  email?: string;
+  phone?: string;
 
   // Questionnaire post-inscription
-  accepte_deplacement: boolean;
-  niveau_etudes: string;
-  niveaux_enseignement: string[];
-  experience_cours: string;
-  jours_disponibles: string[];
-  creneaux_preferes: string[];
-  cgu_acceptees: boolean;
-  questionnaire_rempli: boolean;
+  accepte_deplacement?: boolean;
+  niveau_etudes?: string;
+  niveaux_enseignement?: string[];
+  experience_cours?: string;
+  jours_disponibles?: string[];
+  creneaux_preferes?: string[];
+  cgu_acceptees?: boolean;
+  questionnaire_rempli?: boolean;
 }
 
 export interface Matiere {
@@ -248,7 +251,7 @@ export async function getEncadreurs(params?: {
   niveau_etudes?: string; niveaux_enseignement?: string[];
   jours_disponibles?: string[]; tarif_max_mois?: number;
   tarif_max_horaire?: number; ordering?: string;
-}): Promise<PaginatedResponse<ProfilEncadreur>> {
+}): Promise<PaginatedResponse<ProfilEncadreurPublic>> {
   const qs = new URLSearchParams();
   if (params?.ville) qs.set("ville", params.ville);
   if (params?.quartier) qs.set("quartier", params.quartier);
@@ -275,7 +278,24 @@ export async function getMonProfil(): Promise<ProfilEncadreur> {
   return apiFetch<ProfilEncadreur>("/mon-profil/");
 }
 
-export async function updateMonProfil(data: Partial<ProfilEncadreur>): Promise<ProfilEncadreur> {
+export interface ProfilEncadreurUpdate {
+  bio?: string;
+  tarif_mois?: number | null;
+  tarif_horaire?: number | null;
+  type_tarif?: string;
+  disponible?: boolean;
+  matiere_ids?: number[];
+  autre_matiere?: string;
+  accepte_deplacement?: boolean;
+  niveau_etudes?: string;
+  niveaux_enseignement?: string[];
+  experience_cours?: string;
+  jours_disponibles?: string[];
+  creneaux_preferes?: string[];
+  cgu_acceptees?: boolean;
+}
+
+export async function updateMonProfil(data: ProfilEncadreurUpdate): Promise<ProfilEncadreur> {
   return apiFetch<ProfilEncadreur>("/mon-profil/", {
     method: "PATCH",
     body: JSON.stringify(data),

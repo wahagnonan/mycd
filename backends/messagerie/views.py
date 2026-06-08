@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 class ConversationListView(generics.ListAPIView):
     serializer_class = ConversationListSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -74,17 +73,16 @@ class CreateConversationView(generics.CreateAPIView):
 class ConversationMessageListView(generics.ListCreateAPIView):
     serializer_class = MessageSerializer
     permission_classes = (permissions.IsAuthenticated,)
-    pagination_class = None
 
     def get_queryset(self):
-        conv = Conversation.objects.get(id=self.kwargs["pk"])
+        conv = generics.get_object_or_404(Conversation, id=self.kwargs["pk"])
         user = self.request.user
         if user not in (conv.parent, conv.encadreur):
             return Message.objects.none()
         return Message.objects.filter(conversation=conv).select_related("sender")
 
     def perform_create(self, serializer):
-        conversation = Conversation.objects.get(id=self.kwargs["pk"])
+        conversation = generics.get_object_or_404(Conversation, id=self.kwargs["pk"])
         user = self.request.user
         if user not in (conversation.parent, conversation.encadreur):
             raise PermissionDenied("Vous ne participez pas à cette conversation")
@@ -107,7 +105,7 @@ class MarkAsReadView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, pk):
-        conversation = Conversation.objects.get(id=pk)
+        conversation = generics.get_object_or_404(Conversation, id=pk)
         user = request.user
         if user not in (conversation.parent, conversation.encadreur):
             raise PermissionDenied("Vous ne participez pas à cette conversation")

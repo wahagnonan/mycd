@@ -37,8 +37,23 @@ export default function ConversationPage({
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       fetchMessages();
-      const interval = setInterval(fetchMessages, 5000);
-      return () => clearInterval(interval);
+      let interval = setInterval(fetchMessages, 5000);
+
+      const handleVisibility = () => {
+        if (document.hidden) {
+          clearInterval(interval);
+        } else {
+          fetchMessages();
+          interval = setInterval(fetchMessages, 5000);
+        }
+      };
+
+      document.addEventListener("visibilitychange", handleVisibility);
+
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener("visibilitychange", handleVisibility);
+      };
     } else if (!isLoading && !isAuthenticated) {
       setLoading(false);
     }
@@ -64,9 +79,10 @@ export default function ConversationPage({
     setMessages((prev) => [...prev, tempMsg]);
 
     try {
-      await sendMessage(Number(id), content);
-      const data = await getMessages(Number(id));
-      setMessages(data);
+      const sent = await sendMessage(Number(id), content);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, ...sent, statut: "envoye" as const } : m))
+      );
     } catch {
       setMessages((prev) =>
         prev.map((m) =>

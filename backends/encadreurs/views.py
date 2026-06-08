@@ -8,7 +8,13 @@ from rest_framework.throttling import UserRateThrottle
 from backends.accounts.models import User
 from backends.accounts.permissions import IsEncadreur
 from backends.encadreurs.models import Matiere, ProfilEncadreur
-from backends.encadreurs.serializers import MatiereSerializer, ProfilEncadreurSerializer
+from backends.encadreurs.serializers import (
+    MatiereSerializer,
+    ProfilEncadreurPublicSerializer,
+    ProfilEncadreurSerializer,
+)
+from backends.paiement.models import CreditUtilisation
+from backends.paiement.helpers import get_debloque_ids
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +28,15 @@ class MonProfilPatchThrottle(UserRateThrottle):
 
 
 class EncadreurListView(generics.ListAPIView):
-    serializer_class = ProfilEncadreurSerializer
+    serializer_class = ProfilEncadreurPublicSerializer
     permission_classes = (permissions.AllowAny,)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        request = context.get("request")
+        if request and request.user.is_authenticated and request.user.role == User.Role.PARENT:
+            context["debloque_ids"] = get_debloque_ids(request.user)
+        return context
 
     def get_queryset(self):
         qs = ProfilEncadreur.objects.filter(disponible=True).select_related("user")
@@ -55,7 +68,7 @@ class EncadreurListView(generics.ListAPIView):
             try:
                 qs = qs.filter(note_moyenne__gte=float(note_min))
             except ValueError:
-                pass
+                logger.warning("FILTRE_INVALIDE | note_min=%s", note_min)
 
         niveau_etudes = self.request.query_params.get("niveau_etudes")
         if niveau_etudes:
@@ -77,7 +90,7 @@ class EncadreurListView(generics.ListAPIView):
                     | models.Q(tarif_mois__isnull=True)
                 )
             except ValueError:
-                pass
+                logger.warning("FILTRE_INVALIDE | tarif_max_mois=%s", tarif_max_mois)
 
         tarif_max_horaire = self.request.query_params.get("tarif_max_horaire")
         if tarif_max_horaire:
@@ -87,7 +100,7 @@ class EncadreurListView(generics.ListAPIView):
                     | models.Q(tarif_horaire__isnull=True)
                 )
             except ValueError:
-                pass
+                logger.warning("FILTRE_INVALIDE | tarif_max_horaire=%s", tarif_max_horaire)
 
         ordering = self.request.query_params.get("ordering")
         if ordering in ("note", "-note", "tarif_mois", "-tarif_mois",
@@ -102,8 +115,22 @@ class EncadreurListView(generics.ListAPIView):
 
 class EncadreurDetailView(generics.RetrieveAPIView):
     queryset = ProfilEncadreur.objects.select_related("user")
-    serializer_class = ProfilEncadreurSerializer
     permission_classes = (permissions.AllowAny,)
+
+    def get_serializer_class(self):
+        request = self.request
+        if request.user.is_authenticated and request.user.role == User.Role.PARENT:
+            encadreur = self.get_object()
+            if CreditUtilisation.objects.filter(parent=request.user, encadreur=encadreur).exists():
+                return ProfilEncadreurSerializer
+        return ProfilEncadreurPublicSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        request = context.get("request")
+        if request and request.user.is_authenticated and request.user.role == User.Role.PARENT:
+            context["debloque_ids"] = get_debloque_ids(request.user)
+        return context
 
 
 class MonProfilView(generics.RetrieveUpdateAPIView):
@@ -116,8 +143,6 @@ class MonProfilView(generics.RetrieveUpdateAPIView):
         return [MonProfilThrottle()]
 
     def get_object(self):
-        if self.request.user.role != User.Role.ENCADREUR:
-            raise PermissionDenied("Seuls les encadreurs peuvent accéder à leur profil")
         profil, created = ProfilEncadreur.objects.get_or_create(user=self.request.user)
         if created:
             logger.info(
@@ -138,4 +163,3 @@ class MatiereListView(generics.ListAPIView):
     queryset = Matiere.objects.all().order_by("nom")
     serializer_class = MatiereSerializer
     permission_classes = (permissions.AllowAny,)
-    pagination_class = None
