@@ -6,6 +6,7 @@ django-cors-headers>=4.9,<4.10
 python-dotenv>=1.1,<1.2
 python-decouple>=3.8,<4.0
 paydunya>=1.0,<2.0
+dj-database-url>=2.3,<3.0
 
 # Tests
 pytest>=9.0,<10.0

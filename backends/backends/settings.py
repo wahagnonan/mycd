@@ -1,14 +1,17 @@
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from decouple import Csv, Config, RepositoryEnv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 config = Config(RepositoryEnv(BASE_DIR / ".env"))
 
 SECRET_KEY = config("DJANGO_SECRET_KEY")
-assert SECRET_KEY, "DJANGO_SECRET_KEY must be set in .env"
-assert SECRET_KEY != "django-insecure-6x+rmr_#4i&1nbh)aqeqok%=6@l8uxvr(&exjwtte9+65v^-4*", "Change the default DJANGO_SECRET_KEY"
+if not SECRET_KEY:
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in .env")
+if SECRET_KEY == "django-insecure-6x+rmr_#4i&1nbh)aqeqok%=6@l8uxvr(&exjwtte9+65v^-4*":
+    raise ImproperlyConfigured("Change the default DJANGO_SECRET_KEY in .env")
 
 DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 
@@ -124,12 +127,19 @@ WSGI_APPLICATION = 'backends.backends.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DATABASE_URL = config("DATABASE_URL", default=None)
+if DATABASE_URL:
+    import dj_database_url
+    DATABASES = {
+        "default": dj_database_url.config(default=DATABASE_URL, conn_max_age=600),
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation

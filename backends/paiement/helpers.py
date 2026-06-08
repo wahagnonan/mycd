@@ -19,3 +19,20 @@ def get_debloque_ids(parent):
     return set(
         CreditUtilisation.objects.filter(parent=parent).values_list("encadreur_id", flat=True)
     )
+
+
+def get_credit_summary(parent):
+    total_achetes = CreditAchat.objects.filter(
+        parent=parent, statut=CreditAchat.Statut.COMPLETE
+    ).aggregate(total=models.Sum("credits_achetes"))["total"] or 0
+    total_utilises = CreditUtilisation.objects.filter(parent=parent).count()
+    credits_restants = max(0, total_achetes - total_utilises)
+    debloque_ids = list(
+        CreditUtilisation.objects.filter(parent=parent).values_list("encadreur_id", flat=True)
+    )
+    return {
+        "credits_restants": credits_restants,
+        "total_achetes": total_achetes,
+        "total_utilises": total_utilises,
+        "debloque_ids": debloque_ids,
+    }

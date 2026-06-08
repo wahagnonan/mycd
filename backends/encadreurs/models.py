@@ -1,6 +1,15 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from backends.accounts.models import User
+
+
+def validate_photo(file):
+    max_size = 2 * 1024 * 1024
+    if file.size > max_size:
+        raise ValidationError(
+            f"L'image ne doit pas dépasser 2 Mo (taille actuelle : {file.size // 1024} Ko)"
+        )
 
 
 class Matiere(models.Model):
@@ -76,7 +85,7 @@ class ProfilEncadreur(models.Model):
     experience_cours = models.CharField(max_length=20, choices=EXPERIENCE_COURS_CHOICES, blank=True, default="")
     jours_disponibles = models.JSONField(default=list, blank=True)
     creneaux_preferes = models.JSONField(default=list, blank=True)
-    photo = models.ImageField(upload_to="encadreurs/", blank=True, null=True)
+    photo = models.ImageField(upload_to="encadreurs/", blank=True, null=True, validators=[validate_photo])
     autre_matiere = models.CharField(max_length=200, blank=True, default="", help_text="Autre matière (si 'Autre' est sélectionné)")
     cgu_acceptees = models.BooleanField(default=False)
     questionnaire_rempli = models.BooleanField(default=False)

@@ -15,6 +15,15 @@ from backends.encadreurs.models import ProfilEncadreur
 logger = logging.getLogger(__name__)
 
 
+def _mask_email(email: str) -> str:
+    if "@" in email:
+        local, domain = email.split("@", 1)
+        if len(local) > 1:
+            return local[0] + "***@" + domain
+        return local + "***@" + domain
+    return email
+
+
 class LoginThrottle(AnonRateThrottle):
     scope = "login"
 
@@ -89,7 +98,7 @@ class LoginView(generics.GenericAPIView):
             logger.info(
                 "LOGIN_FAILED | IP=%s | Email=%s",
                 request.META.get("REMOTE_ADDR"),
-                serializer.validated_data["email"],
+                _mask_email(serializer.validated_data["email"]),
             )
             return Response(
                 {"detail": "Email ou mot de passe incorrect"},

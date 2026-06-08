@@ -12,6 +12,8 @@ Thumbs.db
 _bmad-output/
 .opencode/
 
+.venv/
+
 # Environment variables
 .env
 .env.local
