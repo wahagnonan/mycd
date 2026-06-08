@@ -144,22 +144,23 @@ export default function EncadreurDetailPage({
         <div className={`${showBlur ? "filter blur-md pointer-events-none select-none" : ""}`}>
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-8 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold text-white/80 shrink-0">
-                    {profil.nom.charAt(0).toUpperCase()}
-                  </div>
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-4">
+                  {profil.photo ? (
+                    <img
+                      src={profil.photo}
+                      alt={profil.nom}
+                      className="w-20 h-20 rounded-full object-cover border-2 border-white/50"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold text-white/80">
+                      {profil.nom.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
-                    <h1 className="text-2xl font-bold">{profil.nom}</h1>
+                    <h1 className="text-3xl font-bold">{profil.nom}</h1>
                     {profil.email && <p className="text-orange-100 text-sm mt-0.5">{profil.email}</p>}
                     {profil.phone && <p className="text-orange-100 text-sm">{profil.phone}</p>}
-                    <button
-                      onClick={handleContact}
-                      disabled={contactLoading}
-                      className="mt-2 bg-white text-orange-600 px-3 py-1 rounded text-sm font-medium hover:bg-orange-50 transition disabled:opacity-50"
-                    >
-                      {contactLoading ? "..." : "Contacter"}
-                    </button>
                   </div>
                 </div>
                 {profil.verified && (
